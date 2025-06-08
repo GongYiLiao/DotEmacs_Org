@@ -1,0 +1,1013 @@
+#+title: Kiong-Gē's init.el
+#+author: Liāo, Kiong-Gē
+:PROPERTIES:
+#+PROPERTY: header-args :tangle init.el
+#+OPTIONS: toc:2
+#=STARTUP: overview
+:END:
+
+* Early initialization
+The file ==early-init.el== is  pretty much setup for basic frame setup and some =GC= adjustment for start-up speed. 
+
+#+begin_src emacs-lisp :tangle early-init.el
+;;; -*- lexical-binding: t  -*-
+  ;; make sure ntative-comp has the work directory setup
+  (if (and (file-directory-p "/tmp")
+  	 (file-writable-p "/tmp"))
+      (setenv "TMPDIR" "/tmp")
+    (let ((my-local-tmp-dir (concat (getenv "HOME") "/.local/tmp")))
+      (if (not (file-directory-p my-local-tmp-dir))
+  	(make-directory my-local-tmp-dir)
+        (setenv "TMPDIR" my-local-tmp-dir))))
+  ;; speed up initialization
+  (setopt gc-cons-percentage 0.6
+         gc-cons-threshold most-positive-fixnum)
+  ;;
+  (defun use-blah-keys-in-gui (frame)
+    "Make C-i, C-m and C-[ usable in GUI.
+  `FRAME' is the selected GUI frame."
+    (with-selected-frame frame
+      (when (display-graphic-p)
+        (define-key input-decode-map (kbd "C-i") [C-i])
+        (define-key input-decode-map (kbd "C-m") [C-m])
+        (define-key input-decode-map (kbd "C-[") [C-lsb]))))
+  (add-hook 'after-make-frame-functions #'use-blah-keys-in-gui)
+  (use-blah-keys-in-gui (selected-frame))
+#+end_src 
+
+* General utility functions and settings
+** Needed built-ins
+#+begin_src emacs-lisp  
+;;; -*- lexical-binding: t -*- 
+  (require 'package)
+  (require 'use-package)
+  (require 'cl-lib)
+#+end_src
+** Setup up eln-load-path
+#+begin_src emacs-lisp
+  (if (boundp 'native-comp-eln-load-path)      
+      (add-to-list 'native-comp-eln-load-path
+    		 (concat user-emacs-directory "/eln-cache/")))          
+#+end_src
+** General utility functions
+*** GC trick
+#+begin_src emacs-lisp
+  (defun gc-reset-bau ()
+    "Revert GC setting to normal, as we set special GC in early-init."
+    (setopt gc-cons-threshold (* 64 1024 1024) ;; 128 MB
+  	  gc-cons-percentage 0.15)	     ;; higher GC threshold
+    (garbage-collect))
+#+end_src
+*** loop over associate list
+#+begin_src emacs-lisp
+    (defun loop-alist (f k-v-alist)
+      "Map over an associate list.
+  F is a function to take key as first argument and value as
+  the second argument.K-V-ALIST: an assocaited list."
+    (cl-loop for (k . v) in k-v-alist
+  	   do (funcall f k v)))
+#+end_src
+*** add executable binary find-path
+#+begin_src emacs-lisp
+  (defun use-my-local (&optional subpath)
+    "Setup sub path under home directory.
+  `SUBPATH' is the folder of executable path"
+    (interactive)
+    (let ((local-bin (concat (getenv "HOME")
+  			   (if (stringp subpath)
+  			       (concat "/" subpath)
+  			     "/.local/bin"))))
+      (setq exec-path
+  	  (append (list local-bin)
+  		  exec-path))
+      (setenv "PATH"
+  	    (concat local-bin
+  		    ":"
+  		    (getenv "PATH")))))
+#+end_src
+*** Add mode hooks at once
+#+begin_src emacs-lisp
+  (defun md-hook (md lt-f)
+    "An applicator form of `add-hook'.
+  `MD' is the mode and `LT-F' is the rest functions/lambdas"
+    (add-hook (intern (concat (symbol-name md) "-mode-hook"))
+  	    lt-f))
+  ;; 
+  (defun mds-hook (mds lt-f)
+    "Map over the modes with the same theme.
+  `MDS' are the modes and `LT-F' are the functions to apply."
+    (mapc #'(lambda (md) (md-hook md lt-f))
+  	mds))
+#+end_src
+
+* Core Emacs settings
+#+begin_src emacs-lisp
+  (use-package emacs
+  :config
+  (prefer-coding-system 'utf-8)
+  (setopt gc-cons-threshold (* 64 1024 1024)
+  	  coding-system-for-write 'utf-8
+  	  backup-directory-alist `(("." . ,(concat (getenv "HOME") "/.saves")))
+  	  backup-by-copying t
+  	  delete-old-versions t
+  	  kept-new-versions 6
+  	  kept-old-versions 2
+  	  version-control t
+  	  custom-file (concat user-emacs-directory "saved-customization.el")
+  	  inhibit-startup-message t
+  	  inhibit-splash-screen t
+  	  initial-scratch-message nil
+  	  package-user-dir (concat user-emacs-directory "/elpa")
+  	  package-enable-at-startup nil
+  	  package-archives '(("GNU ELPA"     . "https://elpa.gnu.org/packages/")
+  			     ("Non-Gnu ELPA" . "https://elpa.nongnu.org/nongnu/")
+  			     ("MELPA Stable" . "https://stable.melpa.org/packages/")
+  			     ("MELPA Now"    . "https://melpa.org/packages/"))
+  	  package-archive-priorities '(("GNU ELPA"     . 100)
+  				       ("Non-Gnu ELPA" . 50)
+  				       ("MELPA Stable" . 45)
+  				       ("MELPA Now"    . 20))
+  	  package-gnupghome-dir (concat user-emacs-directory "/elpa/gnupg")
+  	  use-package-compute-statistics t) 
+  (package-initialize t)
+  (put 'downcase-region 'disabled nil)
+  (put 'upcase-region 'disabled nil)
+  (use-my-local ".local/bin")
+  (let ((defkm-alst '(("M-h" . nil)
+  		      ("C-x C-p" . mark-paragraph)
+  		      ("C-<next>" . next-buffer)
+  		      ("C-<prior>" . previous-buffer))))
+    (loop-alist #'keymap-global-set defkm-alst)))
+#+end_src
+
+** Async facility
+#+begin_src emacs-lisp
+  (use-package async
+    :commands (list-packages package-install dired)
+    :config
+    (dired-async-mode t)
+    (async-bytecomp-package-mode t))
+#+end_src
+
+* UI settings
+
+** UI ulitiy functions
+
+#+begin_src emacs-lisp
+  (defun my-font-families (dfl-font &optional pref-fonts-alist)
+    "Setup default font face.
+        `DFL-FONT' is the default font face, `PREF-FONTS-ALIST' are the preferred
+         font faces according to language."
+    (set-frame-font dfl-font nil t)
+    (if pref-fonts-alist
+        (dolist (fspc pref-fonts-alist)
+        	(set-fontset-font (frame-parameter nil 'font)
+        			  (car fspc)
+        			  (font-spec :family (cdr fspc))))))
+  ;; 
+  (defun my-font-sizes ()
+    "Setup default font size according to screen size."
+    (interactive)
+    (cond ((and (eq (display-pixel-height) 800)
+  	      (eq (display-mm-height) 160))
+  	 (set-face-attribute 'default nil :height 80))
+  	((and (eq (display-pixel-height) 1080)
+  	      (eq (display-mm-height) 220))
+  	 (set-face-attribute 'default nil :height 160))
+  	((and (eq (display-pixel-height) 1080)
+  	      (eq (display-mm-height) 286))
+  	 (set-face-attribute 'default nil :height 85))
+  	((and (eq (display-pixel-height) 2160)
+  	      (eq (display-mm-height) 340))
+  	 (set-face-attribute 'default nil :height 120))
+  	((and (eq (display-pixel-height) 2160)
+  	      (eq (display-mm-height) 336))
+  	 (set-face-attribute 'default nil :height 144))
+  	((and (eq (display-pixel-height) 1024)
+  	      (eq (display-mm-height) 270))
+  	 (set-face-attribute 'default nil :height 100))
+  	((and (eq (display-pixel-height) 1024)
+  	      (eq (display-mm-height) 301))
+  	 (set-face-attribute 'default nil :height 100))
+  	(t (set-face-attribute 'default nil :height 100))))
+  ;; 
+  (defun my-frame-faces (dlt-font my-pref-fonts-alist theme)
+    "Setup the default frame face.
+      `DLT-FONT' is the default font, `MY-PREF-FONTS-ALIST' is the default
+      per-language font alist, and `THEME' is the default theme to apply."
+    (if (display-graphic-p)
+        (progn
+  	(menu-bar-mode 0)
+      	  (tool-bar-mode 0)
+      	  (scroll-bar-mode 0)
+      	  (my-font-sizes)
+      	  (my-font-families dlt-font
+      			    (cdr my-pref-fonts-alist))
+      	  (blink-cursor-mode -1)
+      	  (set-cursor-color "LightSlateGrey")
+      	  (load-theme theme t t))))
+  ;; 
+  (defun day-or-night-theme (day-theme night-theme)
+    "Setup theme according current time in the day.
+      `DAY-THEME' is the theme for day time and `NIGHT-THEME' is for
+      night time."
+    (let ((now (string-to-number (format-time-string "%H"))) )
+      (if (and (<= 6 now) (<= now 19))
+      	day-theme
+        night-theme)))
+#+end_src
+
+** UI goodies 
+I use many goodies from Minad: consult, marginalia, vertico and orderless:
+
+#+begin_src emacs-lisp
+  ;; 
+  (use-package ace-window
+    :demand t
+    :bind
+    ("M-o" . ace-window))
+  ;; 
+  (use-package shrink-path
+    :demand t)
+  ;; 
+  (use-package consult
+    :commands (marginalia-mode)
+    :bind
+    (("C-x C-b" . consult-buffer)
+     ("C-f"     . consult-line)
+     ("M-y"     . consult-yank-from-kill-ring)
+     ("C-b"     . consult-buffer))
+    :init
+    ;; default keymapping to be removed/taken over by other package
+    (let ((rk-lst '("C-x C-b"
+  		  "M-y"
+  		  "C-f"
+  		  "C-b"
+  		  "C-s"
+  		  "C-r")))
+      (cl-loop for k in rk-lst
+  	     do (funcall #'keymap-global-unset k))))
+  ;; 
+  (use-package marginalia
+    :config
+    (marginalia-mode t))
+  ;; 
+  (use-package vertico
+    :custom
+    (vertico-resize t)
+    (vertico-cycle t)
+    :config
+    (vertico-mode t))
+  ;; 
+  (use-package orderless
+    :custom
+    (completion-styles '(orderless basic))
+    (completion-category-defaults nil)
+    (completion-category-overrides '((file (styles partial-completion)))))
+#+end_src
+
+
+** Theme and UI widget
+
+#+begin_src emacs-lisp
+    ;; ==== General programming mode face setup utilities ====
+  (use-package theme-anchor
+    :commands (theme-anchor-buffer-local theme-anchor-hook-gen)
+    :custom
+    (face-impute-alist '((mode-line-active . mode-line)
+  		       (doom-modeline-eldoc . mode-line)
+  		       (doom-modeline-bar . mode-line)
+  		       (doom-modeline-inactive-bar . mode-line-inactive)))
+    :config
+    (defun leuven-face nil (theme-anchor-hkfn-gen 'leuven))
+    (add-hook 'fundamental-mode-hook 'leuven-face)
+    :hook
+    ((special-mode . leuven-face)
+     (help-mode . leuven-face)
+     (emacs-lisp-compilation-mode . leuven-face)
+     (messages-buffer-mode . leuven-face)
+     (ibuffer-mode . leuven-face)))
+  ;; 
+  (use-package svg-tag-mode
+    :init
+    (defconst date-re "[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}")
+    (defconst time-re "[0-9]\\{2\\}:[0-9]\\{2\\}")
+    (defconst day-re "[A-Za-z]\\{3\\}")
+    (defconst day-time-re (format "\\(%s\\)? ?\\(%s\\)?" day-re time-re))
+    :config
+    ;; 
+    (defun svg-progress-percent (value)
+      (svg-image (svg-lib-concat
+  		(svg-lib-progress-bar (/ (string-to-number value) 100.0)
+  				      nil :margin 0 :stroke 2 :radius 3 :padding 2 :width 11)
+  		(svg-lib-tag (concat value "%")
+  			     nil :stroke 0 :margin 0)) :ascent 'center))
+
+    (defun svg-progress-count (value)
+      (let* ((seq (mapcar #'string-to-number (split-string value "/")))
+             (count (float (car seq)))
+             (total (float (cadr seq))))
+        (svg-image (svg-lib-concat
+  		  (svg-lib-progress-bar (/ count total) nil
+  					:margin 0 :stroke 2 :radius 3 :padding 2 :width 11)
+  		  (svg-lib-tag value nil
+  			       :stroke 0 :margin 0)) :ascent 'center))))
+  ;; 
+  (use-package doom-modeline
+    :demand t
+    :after (shrink-path)
+    :config
+    (doom-modeline-mode t)
+    (column-number-mode t))
+  ;; 
+  (use-package base16-theme
+    :demand t
+    :after (theme-anchor)
+    :config
+    ;; there's no such built-in face called heading
+    (defface heading '((t (:inherit default))) "heading" :group 'default)
+    (if (display-graphic-p)
+        (my-frame-faces
+         "Fira Code"
+         nil
+         ;; '((han   .  "Noto Sans Mono CJK TC")
+         ;;   (kana  .  "Noto Sans Mono CJK JP"))
+         ;; 'base16-default-light
+         'modus-operandi-tinted))
+    (mds-hook  '(eshell shell term vterm dired)
+  	     (theme-anchor-hook-gen 'base16-nord)))
+  ;; 
+  (use-package eat
+    :commands eshell
+    :hook
+    ((eshell-load . eat-eshell-mode)
+     (eshell-load . eat-eshell-visual-command-mode)))
+  ;; 
+  (use-package eshell-git-prompt
+    :commands (eshell)
+    :init
+    (eshell-git-prompt-use-theme 'powerline))
+  ;; 
+  (use-package helpful
+    :when (display-graphic-p)
+    :after (theme-anchor)
+    :commands (helpful-callable helpful-variable helpful-key)
+    :hook
+    ((helpful-mode . leuven-face))
+    :bind (("C-h f" . helpful-callable)
+  	 ("C-h v" . helpful-variable)
+  	 ("C-h ." . helpful-at-point)))
+#+end_src
+
+* Programming mode settings
+
+** Common settings and tools
+#+begin_src emacs-lisp
+    ;; 
+  (use-package flymake
+    :config
+    (defun elisp-flymake-load-path-update (func &rest args)
+      "Make sure flymake knows the updated `load-path'.
+  Parameter FUNC is the orgiinal function to be adviced.
+  ARGS is the arguments to be passed over."
+      (let ((elisp-flymake-byte-compile-load-path
+  	   (append elisp-flymake-byte-compile-load-path
+  		   load-path)))
+        (apply func args)))
+    (advice-add 'elisp-flymake-byte-compile
+  	      :around #'elisp-flymake-load-path-update))
+  ;; 
+  (use-package time-stamp
+    :demand t
+    :config
+    (setopt time-stamp-start "Updated:[ 	]+\\\\?+"
+  	  time-stamp-format "%Y-%m-%d %3a %H:%M:%S%:z by %L"
+  	  time-stamp-end "$")
+    :hook
+    ((before-save . time-stamp)))
+  ;; 
+  (use-package paren
+    :custom
+    (show-paren-style 'expression)
+    :hook
+    ((prog-mode . show-paren-mode)))
+  ;; 
+  (use-package elec-pair
+    :hook
+    ((prog-mode . electric-pair-local-mode)
+     (comint-mode . electric-pair-local-mode)))
+  ;; 
+  (use-package rainbow-delimiters
+    :hook
+    ((prog-mode . rainbow-delimiters-mode)
+     (comint-mode . rainbow-delimiters-mode)))
+  ;; 
+  (use-package display-line-numbers
+    :hook
+    ((prog-mode . display-line-numbers-mode)))
+  ;; 
+  (use-package hideshow
+    :demand t
+    :after (hydra)
+    :custom
+    (hs-hide-comments-when-hiding-all nil)
+    :config
+    (defun
+        hs-hide-all-when-open ()
+      (hs-minor-mode 1)
+      (hs-hide-all))
+    (defhydra showhide-hydra
+      (:pre (hs-minor-mode 1) :color DeepSkyBlue1)
+      "
+  _t_ hs-toggle-hiding:
+  _s_ hs-show-block:
+  _h_ hs-hide-block:
+  _l_ hs-hide-level:
+  _a_ hs-show-all:
+  _b_ hs-hide-all:
+  "
+      ("t" #'hs-toggle-hiding "toggle")
+      ("s" #'hs-show-block "show")
+      ("h" #'hs-hide-block "hide")
+      ("l" #'hs-hide-level  "hide nested levels")
+      ("a" #'hs-show-all "show all")
+      ("b" #'hs-hide-all "hide-all")
+      ("q" nil "quit"))
+    :bind
+    (:map hs-minor-mode-map
+  	("M-h" . showhide-hydra/body))
+    :hook
+    ((prog-mode . hs-hide-all-when-open)))
+  ;; 
+  (use-package lin
+    :custom
+    (lin-mode-hooks '(python-ts-mode-hook
+  		    rust-ts-mode-hook
+  		    ess-r-mode-hook
+  		    emacs-lisp-mode-hook
+  		    slime-mode-hook
+  		    sly-mode-hook
+  		    racket-mode-hook
+  		    geiser-mode-hook))
+    :config
+    (lin-global-mode t))
+  ;; ==== LSP ====
+  (use-package eglot
+    :defer nil
+    :ensure t
+    :custom
+    (fset #'jsonrpc--log-event #'ignore)
+    (eglot-events-buffer-size 0)
+    (eglot-sync-connect nil)
+    (eglot-connect-timeout nil)
+    (eglot-autoshutdown t)
+    (eglot-send-changes-idle-time 3)
+    (flymake-no-changes-timeout 5)
+    (eldoc-echo-area-use-multiline-p nil)
+    (eglot-ignore-server-capabilities '(:inlayhintProvider
+  				      :documentFormattingProvider
+  				      :documentRangeFormattingProvider
+  				      :documentOnTypeFormattingProvider)))
+  ;; 
+  (use-package eglot-booster
+    :after eglot
+    :custom
+    (eglot-booster-io-only t)
+    :config
+    (eglot-booster-mode))
+  ;; 
+  (use-package dash
+    :defer nil
+    :ensure t)
+  ;; ==== use Treesit insteadd Regexp legacy moed ====
+  (use-package treesit-auto
+    :defer nil
+    :custom
+    (treesit-auto-install 'prompt)
+    :config
+    (treesit-auto-add-to-auto-mode-alist 'all)
+    (global-treesit-auto-mode t))
+  ;; ==== auto-completion on code file ====
+  (use-package corfu
+    :commands (corfu-mode)
+    :hook
+    ((prog-mode . corfu-mode))
+    :custom
+    (corfu-auto t)
+    (corfu-auto-delay 0.0));
+  ;; ---- log file viewer ----
+  (use-package logview
+    :commands (logviwe-mode)
+    :custom
+    (datetime-timezone 'America/Chicago))
+  ;; ---- code snippet template ----
+  (use-package yasnippet
+    :commands (yas-minor-mode)
+    :config
+    (add-to-list 'yas-snippet-dirs (concat user-emacs-directory "snippets"))
+    :bind
+    (:map yas-minor-mode-map
+  	("<tab>" . nil)
+  	("C-<tab>" . yas-expand))
+    :hook
+    ((prog-mode . yas-minor-mode)))
+  ;; ---- snippets ----
+  (use-package yasnippet-snippets
+    :after (yasnippet)
+    :commands (yas-minor-mode)
+    :config
+    (yas-reload-all))
+  ;; ---- new file template ----
+  (use-package autoinsert
+    :custom
+    (auto-insert-query nil)
+    (auto-insert-directory (concat user-emacs-directory "templates"))
+    :config
+    ;; 
+    (defun autoinsert-yas-expand ()
+      (yas-expand-snippet (buffer-string) (point-min) (point-max)))
+    ;;
+    (define-auto-insert "\\.el$" ["base_template.el" autoinsert-yas-expand])
+    (define-auto-insert "\\.R$"  ["base_template.R"  autoinsert-yas-expand])
+    ;;
+    (auto-insert-mode t)
+    :hook
+    ((find-file . auto-insert)))
+  ;; ---- Git ----
+  (use-package magit
+    :defer t
+    :commands (magit))
+#+end_src
+
+** Lisp modes settings
+
+*** Emacs Lisp
+
+#+begin_src emacs-lisp
+    ;; General lispy setup, Emacs lisp
+  (use-package lispy 
+    :after (theme-anchor)
+    :commands (lispy-mode)
+    :config
+    (defun lispy-face (theme &rest other-steps)
+      (funcall (eval `(theme-anchor-hook-gen ',theme
+  					   (lispy-mode t)
+  					   ,@other-steps))))
+    (defun elisp-face nil (lispy-face 'base16-atelier-forest-light))
+    (defun ielisp-face nil (lispy-face 'base16-one-light))
+    :hook
+    ((emacs-lisp-mode . elisp-face)
+     (lisp-interaction-mode . ielisp-face))
+    :bind
+    (:map lispy-mode-map
+  	("M-o" . nil)
+  	("M-1" . lispy-string-oneline)))
+  ;; theme for ielm
+  (use-package zenburn-theme
+    :after (theme-anchor lispy)
+    :commands (ielm)
+    :config
+    (defun ielm-face nil (lispy-face 'zenburn ))
+    :hook ((ielm-mode . ielm-face)))
+  ;; ---- Common Lisp ----
+  ;; Common Lisp
+#+end_src
+
+*** Common Lisp
+**** Sly
+#+begin_src emacs-lisp
+  ;; Sly
+  (use-package sly
+    :defer t
+    :after (theme-anchor lispy)
+    :commands (sly)
+    :config
+    (remove-hook 'lisp-mode-hook 'slime-lisp-mode-hook)
+    (use-my-local)
+    (use-my-local ".roswell/bin")
+    (setq inferior-lisp-program "ros -Q -- run")
+    (setq lispy-colon-no-space-regex
+          (append lispy-colon-no-space-regex
+                  '((sly-mrepl-mode . "\\s-\\|[:^?#]\\|ql\\|alexandria\\|\\(?:\\s([[:word:]-]*\\)"))))
+    (defun clisp-face nil (lispy-face 'base16-summerfruit-light)) 
+    (defun inf-clisp-face nil (lispy-face 'base16-summerfruit-light))
+    :hook ((sly-mode . clisp-face)
+  	 (sly-repl-mode . inf-clisp-face)))
+#+end_src
+
+*** Scheme
+**** Geiser for various Scheme implementations
+#+begin_src emacs-lisp
+  ;;; ---- Scheme Family ----
+  ;; Scheme
+  (use-package geiser
+    :after (lispy)
+    :commands (geiser)
+    :config
+    ;; ---- Scheme face ----
+    (defun scheme-face nil (lispy-face 'base16-horizon-dark)) 
+    (defun scheme-repl-face nil (lispy-face 'base16-horizon-terminal-dark))
+    (defun scheme-debug-face nil (inf-lispy-repl-face 'base16-cupertino)) 
+    :custom
+    '((geiser-repl-use-other-window nil)
+      (setq geiser-guile-binary "guile"))
+    :hook ((geiser-mode . scheme-face)
+           (geiser-repl-mode . scheme-repl-face)
+           (inferior-scheme-mode . scheme-repl-face)
+           (geiser-debug-mode . scheme-debug-face)))
+#+end_src
+**** Racket 
+#+begin_src emacs-lisp
+    ;;; ---- Racket ----
+    (use-package racket-mode
+      :commands (racket-repl racket-mode)
+      :after (lispy)
+      :config
+      (defun racket-face nil (lispy-face 'base16-atelier-sulphurpool))
+      (defun racket-repl-face nil (lispy-face 'base16-atelier-savanna))
+      (defun racket-debug-face nil (lispy-face 'base16-apathyo))
+      :hook ((racket-mode . racket-face)
+             (racket-mode . racket-xp-mode)
+             (racket-repl-mode . racket-repl-face)))
+#+end_src
+*** Clojure
+#+begin_src emacs-lisp
+  ;;; ---- Clojure ----
+    (use-package cider
+      :after (lispy)
+      :commands (clojure-mode cider-jack-in)
+      :config
+      ;; ---- Clojure face ----
+      (defun clojure-face nil (lispy-face 'base16-tomorrow-night))
+      (defun clojure-repl-face nil (lispy-face 'base16-tomorrow-night))
+      :hook ((clojure-mode . clojure-face)
+             (cider-repl-mode . clojure-repl-face))
+      :init
+      (use-my-local ".sdkman/candidates/java/current/bin"))
+#+end_src
+** R/Ess
+#+begin_src emacs-lisp
+    ;;; ==== R ====
+  (use-package ess-r-mode
+    :defer t
+    :commands (R ess-R-mode ess-r-mode R-mode)
+    :after (theme-anchor)
+    :init
+    (setenv "R_LINTR_LINTER_FILE" (concat user-emacs-directory  "lsp_configs/lintr"))
+    (with-eval-after-load 'eglot
+      (setf (cdr (assoc '(R-mode ess-r-mode) eglot-server-programs))
+  	  '("R" "--slave" "-e"
+  	    "options(languageserver.rich_documentation = FALSE); languageserver::run();")))
+    :custom
+    (ess-write-to-dribble nil)
+    (ess-history-file nil)
+    (inferior-R-args "--no-save --no-restore -q")
+    (ess-R-font-lock-keywords '((ess-S-fl-keyword:prompt . t)
+  			      (ess-R-fl-keyword:messages . t)
+  			      (ess-R-fl-keyword:modifiers . t)
+  			      (ess-R-fl-keyword:fun-defs . t)
+  			      (ess-R-fl-keyword:keywords . t)
+  			      (ess-R-fl-keyword:assign-ops . t)
+  			      (ess-R-fl-keyword:constants . t)
+  			      (ess-fl-keyword:matrix-labels . t)
+  			      (ess-fl-keyword:fun-calls . t)
+  			      (ess-fl-keyword:numbers . t)
+  			      (ess-fl-keyword:operators . t)
+  			      (ess-fl-keyword:delimiters . t)
+  			      (ess-fl-keyword:= . t)
+  			      (ess-R-fl-keyword:F&T . t)))
+    (ess-r-backend 'lsp) 
+    :config
+    (defun r-face nil (theme-anchor-hkfn-gen 'base16-atelier-seaside-light))
+    (defun r-tsst-face nil (theme-anchor-hkfn-gen 'base16-atelier-seaside-light))
+    (defun r-repl-face nil (theme-anchor-hkfn-gen 'base16-atelier-seaside-light))
+    (defun r-help-face nil (theme-anchor-hkfn-gen 'base16-ashes))
+    :hook
+    ((ess-r-mode . r-face)
+     (ess-r-mode . eglot-ensure)
+     (ess-r-transcript-mode . r-tsst-face)
+     (inferior-ess-r-mode .  r-repl-face)
+     (ess-r-help-mode . r-help-face))
+    :bind
+    (:map ess-r-mode-map
+  	("C-=" . ess-cycle-assign))
+    (:map inferior-ess-r-mode-map
+
+  	("C-=" . ess-cycle-assign)))
+  ;; 
+  (use-package r-ts-mode
+    :defer t
+    :commands (r-ts-mode)
+    :after (eglot ess-r-mode)
+    :load-path "~/Downloads/github/nverno/r-ts-mode"
+    :init
+    (with-eval-after-load 'eglot
+      (add-to-list 'eglot-server-programs
+  		 '(r-ts-mode . ("R" "--slave" "-e" "options(languageserver.rich_documentation = FALSE); languageserver::run()"))))
+    (defvar-keymap r-ts-mode-map
+      :parent ess-r-mode-map)
+    :bind
+    (:map r-ts-mode-map
+  	("C-=" . ess-cycle-assign))
+    :hook
+    ((r-ts-mode . r-face)
+     (r-ts-mode . eglot-ensure)))
+#+end_src
+** Python
+#+begin_src emacs-lisp
+    ;;; === Python ====
+  (use-package python
+    :after (treesit eglot)
+    :commands (run-python python-ts-mode)
+    :bind
+    (:map eglot-mode-map
+          ("C-c C-d" . eldoc)
+          ("C-c C-e" . eglot-rename)
+          ("C-c C-o" . python-sort-imports)
+          ("C-c C-f" . eglot-format-buffer))
+    :custom
+    (python-shell-interpreter "jupyter")
+    (python-shell-interpreter-args "console --simple-prompt")
+    (python-shell-prompt-detect-failure-warning nil)
+    :config
+    (add-to-list 'python-shell-completion-native-disabled-interpreters
+  	       "jupyter")
+    (defun python-face nil
+      (theme-anchor-hkfn-gen 'base16-atelier-lakeside))
+    (defun python-repl-face nil
+      (theme-anchor-hkfn-gen 'base16-atelier-lakeside-light))
+    (setq-default eglot-workspace-configuration
+                  '((:pylsp . (:configurationSources ["flake8"]
+  			     :plugins (:pycodestyle
+  				       (:enabled :json-false)
+  				       :mccabe (:enabled :json-false)
+  				       :pyflakes (:enabled :json-false)
+  				       :flake8 (:enabled :json-false
+  							 :maxLineLength 88)
+  				       :ruff (:enabled t
+  						       :lineLength 88)
+  				       :pydocstyle (:enabled t
+  							     :convention "numpy")
+  				       :yapf (:enabled :json-false)
+  				       :autopep8 (:enabled :json-false)
+  				       :black (:enabled t
+  							:line_length 88
+  							:cache_config t))))))
+    :hook ((python-ts-mode . python-face)
+  	 (python-ts-mode . eglot-ensure)
+  	 (python-ts-mode . flyspell-prog-mode)
+  	 (python-ts-mode . superword-mode)
+  	 (python-ts-mode . (lambda () (set-fill-column 88)))
+  	 (inferior-python-mode . python-repl-face)))
+#+end_src
+** C/Fortran/Rust low level languages
+*** C/C++
+#+begin_src emacs-lisp
+    ;; C/C++
+  (use-package cc-mode
+    :commands (cc-mode c-mode c++-mode c++-ts-mode c-ts-mode)
+    :config
+    (defun c-basic-face nil (theme-anchor-hkfn-gen 'base16-gruvbox-light-medium))
+    (defun c++-basic-face nil (theme-anchor-hkfn-gen 'base16-gruvbox-light-hard))
+    :hook ((c-ts-mode . c-basic-face )
+  	 (c++-ts-mode . c++-basic-face)))
+#+end_src
+*** Fortran
+#+begin_src emacs-lisp
+  ;; Fortran
+  (use-package f90
+    :defer t
+    :commands (f90-mode fortran-mode)
+    :config
+    (defun fortran-90-face nil (theme-anchor-hkfn-gen 'modus-operandi-deuteranopia))
+    :hook ((f90-mode . fortran-90-face)))
+#+end_src
+*** Rust
+#+begin_src emacs-lisp
+  ;; Rust
+  (use-package rust-mode
+    :defer t
+    :commands (rust-mode rust-ts-mode)
+    :config
+    (defun rust-face nil (theme-anchor-hkfn-gen 'modus-operandi-tinted))
+    :custom
+    (rust-mode-treesitter-derive t)
+    :hook
+    ((rust-mode . rust-face)
+     (rust-ts-mode . rust-face))
+    :init
+    (use-my-local ".cargo/bin"))
+#+end_src 
+
+** Functional static programming languages
+*** Haskell
+#+begin_src emacs-lisp
+  ;; 
+  (use-package haskell-mode
+    :defer t
+    :commands (run-haskell haskell-mode)
+    :init
+    (use-my-local ".ghcup/bin"))
+#+end_src
+*** Scala
+#+begin_src emacs-lisp
+    ;; 
+  (use-package scala-repl
+    :defer t
+    :commands (scala-repl-run)
+    :custom
+    (scala-repl-command-alist  '((mill "mill" "_.console")
+  			       (sbt "sbt" "console")
+  			       (nil "scala-cli" "repl" "--amm"))))
+#+end_src
+
+* Writing mode
+
+** 自定中文輸入法
+#+begin_src emacs-lisp
+  (use-package cj5input-dvorak-ergonomic
+  :defer t
+  :commands load-cj5
+  :load-path (lambda () (concat
+  			 user-emacs-directory
+  			 "/elpa/homebrew/cj5input-dvorak-ergonomic"))
+  :config
+  (defun load-cj5 ()
+    (interactive)
+    (set-input-method "CJ5_DVORAK_ERGONOMIC")))
+#+end_src
+
+** Org-mode
+#+begin_src emacs-lisp
+    ;;; Code:
+  (use-package org
+    :config
+    (font-lock-add-keywords 'org-mode
+  			  '(("^ *\\([-]\\) "
+  			     (0 (prog1 ()
+  				  (compose-region (match-beginning 1)
+  						  (match-end 1) "•"))))))
+    :custom
+    (org-hide-emphasis-markers t)
+    (org-emphasis-alist '(("*" (:weight bold))
+  			("/" italic)
+  			("_" underline)
+  			("=" org-verbatim verbatim)
+  			("~" org-code verbatim)
+  			("+" (:strike-through t)))))
+  ;; 
+  (use-package apropospriate-theme
+    :if (display-graphic-p)
+    :commands (org-mode)
+    :config
+    (defun org-aprp-face nil
+      (theme-anchor-hkfn-gen 'apropospriate-light))
+    :hook
+    (org-mode . org-aprp-face))
+  ;; 
+  (use-package org-superstar
+    :commands org-mode
+    :if (display-graphic-p)
+    :after org
+    :hook (org-mode . org-superstar-mode)
+    :custom
+    (org-hide-leading-stars nil)
+    (org-superstar-leading-bullet ?\s)
+    (org-indent-mode-turns-on-hiding-stars nil)
+    :init
+    (package-activate 'org-superstar))
+#+end_src
+
+*** 宮毅's Org-mode addons
+#+begin_src emacs-lisp
+    (defvar lkg-basic-face
+    '((variable-pitch ((t (:family "Linux Libertine O"))))
+      (fixed-pitch ((t ( :family "Fira Code"))))
+      (org-code ((t (:inherit (shadow fixed-pitch)))))
+      (org-block ((t (:inherit org-code :background "#efefd3" :extend t) )))
+      (org-block-begin-line ((t (:inherit org-block))))
+      (org-block-end-line ((t (:inherit org-block))))
+      (org-document-info ((t (:foreground "dark orange"))))
+      (org-document-info-keyword ((t (:inherit (shadow fixed-pitch)))))
+      (org-indent ((t (:inherit (org-hide fixed-pitch)))))
+      (org-link ((t (:foreground "royal blue" :underline t))))
+      (org-meta-line ((t (:inherit (shadow fixed-pitch)))))
+      (org-property-value ((t (:inherit fixed-pitch))) t)
+      (org-special-keyword ((t (:inherit (font-lock-comment-face fixed-pitch)))))
+      (org-table ((t (:inherit fixed-pitch :foreground "#83a598"))))
+      (org-tag ((t (:inherit (shadow fixed-pitch) :weight bold :height 0.8))))
+      (org-verbatim ((t (:inherit (shadow fixed-pitch)))))
+      (org-hdrfc ((t (:inherit fixed-pitch :weight bold))))
+      (org-level-8 ((t (:inherit org-hdrfc :height 1.0  :foreground "snow3"))))
+      (org-level-7 ((t (:inherit org-hdrfc :height 1.0  :foreground "DarkSalmon"))))
+      (org-level-6 ((t (:inherit org-hdrfc :height 1.0  :foreground "SlateBlue"))))
+      (org-level-5 ((t (:inherit org-hdrfc :height 1.1  :foreground "SeasGreen"))))
+      (org-level-4 ((t (:inherit org-hdrfc :height 1.2  :foreground "RoyalBlue"))))
+      (org-level-3 ((t (:inherit org-hdrfc :height 1.4  :foreground "DarkCyan"))))
+      (org-level-2 ((t (:inherit org-hdrfc :height 1.6  :foreground "DarkOrange2"))))
+      (org-level-1 ((t (:inherit org-hdrfc :height 1.75 :foreground "DarkOrchid2"))))
+      (org-document-title ((t (:inherit org-hdrfc :height 2.0 :foreground "maroon"))))))
+  ;;
+  (defvar lkg-org-prettify-symbols-alist
+    '(("[ ]" . "")
+      ("[X]" . "")
+      ("[-]" . "" )
+      ("#+BEGIN_SRC" . ?≫)
+      ("#+END_SRC" . ?≫)
+      ("#+begin_src" . ?≫)
+      ("#+end_src" . ?≫)
+      ("#+BEGIN_QUOTE" . ?❝)
+      ("#+END_QUOTE" . ?❞)
+      (":work:"     . "")
+      (":inbox:"    . "")
+      (":task:"     . "")
+      (":thesis:"   . "")
+      (":uio:"      . "")
+      (":emacs:"    . "")
+      (":learn:"    . "")
+      (":code:"     . "")))
+  ;; 
+  (defvar lkg-org-tag-pttrns
+    `(;; TODO / DONE
+      ("TODO" . ((lambda (tag) (svg-tag-make "TODO" :face 'org-todo :inverse t :margin 0))))
+      ("DONE" . ((lambda (tag) (svg-tag-make "DONE" :face 'org-done :inverse t :margin 0))))
+      ;; Task priority
+      ("\\[#[A-Z]\\]" . ( (lambda (tag)
+                            (svg-tag-make tag :face 'org-priority
+                                          :beg 2 :end -1 :margin 0))))
+      ;; Progress
+      ("\\(\\[[0-9]\\{1,3\\}%\\]\\)" . ((lambda (tag)
+  					(svg-progress-percent (substring tag 1 -2)))))
+      ("\\(\\[[0-9]+/[0-9]+\\]\\)" . ((lambda (tag)
+  				      (svg-progress-count (substring tag 1 -1)))))
+      ;; Citation of the form [cite:@Knuth:1984]
+      ("\\(\\[cite:@[A-Za-z]+:\\)" . ((lambda (tag)
+  				      (svg-tag-make tag
+                                                      :inverse t
+                                                      :beg 7 :end -1
+                                                      :crop-right t))))
+      ("\\[cite:@[A-Za-z]+:\\([0-9]+\\]\\)" . ((lambda (tag)
+                                                 (svg-tag-make tag
+                                                               :end -1
+                                                               :crop-left t)))) 
+      ;; Active date (with or without day name, with or without time)
+      (,(format "\\(<%s>\\)" date-re) .
+       ((lambda (tag)
+          (svg-tag-make tag :beg 1 :end -1 :margin 0))))
+      (,(format "\\(<%s \\)%s>" date-re day-time-re) .
+       ((lambda (tag)
+          (svg-tag-make tag :beg 1 :inverse nil :crop-right t :margin 0))))
+      (,(format "<%s \\(%s>\\)" date-re day-time-re) .
+       ((lambda (tag)
+          (svg-tag-make tag :end -1 :inverse t :crop-left t :margin 0))))
+
+      ;; Inactive date  (with or without day name, with or without time)
+      (,(format "\\(\\[%s\\]\\)" date-re) .
+       ((lambda (tag)
+          (svg-tag-make tag :beg 1 :end -1 :margin 0 :face 'org-date))))
+      (,(format "\\(\\[%s \\)%s\\]" date-re day-time-re) .
+       ((lambda (tag)
+          (svg-tag-make tag :beg 1 :inverse nil
+  		      :crop-right t :margin 0 :face 'org-date))))
+      (,(format "\\[%s \\(%s\\]\\)" date-re day-time-re) .
+       ((lambda (tag)
+          (svg-tag-make tag :end -1 :inverse t
+  		      :crop-left t :margin 0 :face 'org-date))))))
+  ;; 
+  (defun lkg-org-face-set ()
+    "Org mode hook top level."
+    (interactive)
+    (with-current-buffer (current-buffer)
+      (setq-local prettify-symbols-alist lkg-org-prettify-symbols-alist)
+      (setq-local svg-tag-tags lkg-org-tag-pttrns)
+      (dolist (spec lkg-basic-face)
+        (face-remap-set-base (car spec)
+  			   (face-spec-choose (nth 1 spec))))
+      (prettify-symbols-mode t)
+      (svg-tag-mode t)))
+  ;;
+  (if (display-graphic-p)
+    (add-hook 'org-mode-hook 'lkg-org-face-set 90))
+#+end_src
+
+
+* Coda of the initilization
+#+begin_src emacs-lisp
+  ;;
+  (defun theme-anchor-misc-buffers nil
+    (interactive)
+    (dolist (bffr '("*Messages*"
+  		  "*Ibuffer*"
+  		  "*Backtrace*"
+  		  "*Async-native-compile-log*"
+  		  "*Flymake log*"))
+      (if (get-buffer bffr)
+  	(with-current-buffer bffr (theme-anchor-buffer-local 'leuven)))))
+  (theme-anchor-misc-buffers)
+  ;; 
+  (run-with-idle-timer 4 nil #'gc-reset-bau)
+#+end_src
+
+* Final notes
+
+# README.org ends here
