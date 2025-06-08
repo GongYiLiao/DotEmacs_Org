@@ -1,0 +1,14 @@
+linters: linters_with_defaults(
+    indentation_linter = indentation_linter(indent = 4L, hanging_indent_style = "always"),
+    assignment_linter = assignment_linter(operator = c("->", "->>", "<-", "<<-")),
+    nonportable_path_linter = NULL,
+    line_length_linter = line_length_linter(length = 160L),
+    absolute_path_linter = NULL,
+    undesirable_function_linter = NULL,
+    brace_linter = NULL
+  )
+encoding: "UTF-8"
+exclusions: list(
+    "renv",
+    "packret"
+  )
