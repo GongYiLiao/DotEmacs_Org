@@ -13,7 +13,7 @@ To  generate =early-init.el= and =init.el= from this =README.org= file, run the 
  emacs --init-directory . -l init_gen.el
 #+end_src
 ** Caveat
-Do not byte-compile the generated =init.el=, let alone the =early-init.el= into =.elc= files. It
+Do not byte-compile the generated =init.el=, let alone turning =early-init.el= into a =.elc= one. It
 will cause major breakage and native compiler will keep complaining about undefined symbols.
 * Early initialization
 The file ==early-init.el== is  pretty much setup for basic frame setup and some =GC= adjustment for start-up speed. 
