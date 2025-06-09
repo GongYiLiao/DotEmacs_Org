@@ -18,16 +18,16 @@ will cause major breakage and the native compiler will keep complaining about un
 * Early initialization
 The file =earli-init.el= is pretty much a setup for basic frame setup and some =GC= adjustment for start-up speed.
 ** Setup =TMPDIR= for =native-comp=
+Make sure ntative-comp has the work directory setup
 #+begin_src emacs-lisp :tangle early-init.el
   ;;; -*- lexical-binding: t  -*-
-    ;; make sure ntative-comp has the work directory setup
-    (if (and (file-directory-p "/tmp")
+  (if (and (file-directory-p "/tmp")
     	 (file-writable-p "/tmp"))
         (setenv "TMPDIR" "/tmp")
-      (let ((my-local-tmp-dir (concat (getenv "HOME") "/.local/tmp")))
-        (if (not (file-directory-p my-local-tmp-dir))
+    (let ((my-local-tmp-dir (concat (getenv "HOME") "/.local/tmp")))
+      (if (not (file-directory-p my-local-tmp-dir))
     	(make-directory my-local-tmp-dir)
-          (setenv "TMPDIR" my-local-tmp-dir))))
+        (setenv "TMPDIR" my-local-tmp-dir))))
 #+end_src
 ** Treak =GC= threshold to speed up init
 #+begin_src emacs-lisp :tangle early-init.el
