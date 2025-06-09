@@ -7,7 +7,7 @@
 :END:
 
 * How to use this file
-** Generat =init.el= and =early-init.el=
+** Generate =init.el= and =early-init.el=
 To  generate =early-init.el= and =init.el= from this =README.org= file, run the following command
 #+begin_src bash :tangle no
  emacs --init-directory . -l init_gen.el
