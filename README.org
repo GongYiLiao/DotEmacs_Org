@@ -16,7 +16,7 @@ To  generate =early-init.el= and =init.el= from this =README.org= file, run the 
 Do not byte-compile the generated =init.el=, let alone turning =early-init.el= into a =.elc= one. It
 will cause major breakage and the native compiler will keep complaining about undefined symbols.
 * Early initialization
-The file =~early-init.el~= is  pretty much setup for basic frame setup and some =GC= adjustment for start-up speed.
+The file =earli-init.el= pretty much setup for basic frame setup and some =GC= adjustment for start-up speed.
 ** Setup =TMPDIR= for =native-comp=
 #+begin_src emacs-lisp :tangle early-init.el
   ;;; -*- lexical-binding: t  -*-
