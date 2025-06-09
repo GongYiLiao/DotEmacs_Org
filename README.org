@@ -6,23 +6,33 @@
 #=STARTUP: overview
 :END:
 
+* How to use this file
+To  generate =early-init.el= and =init.el= from this =README.org= file, run the following command
+#+begin_src bash :tangle no
+ emacs --init-directory . -l init_gen.el
+#+end_src
 * Early initialization
 The file ==early-init.el== is  pretty much setup for basic frame setup and some =GC= adjustment for start-up speed. 
 
+** Setup =TMPDIR= for =native-comp=
 #+begin_src emacs-lisp :tangle early-init.el
-;;; -*- lexical-binding: t  -*-
-  ;; make sure ntative-comp has the work directory setup
-  (if (and (file-directory-p "/tmp")
-  	 (file-writable-p "/tmp"))
-      (setenv "TMPDIR" "/tmp")
-    (let ((my-local-tmp-dir (concat (getenv "HOME") "/.local/tmp")))
-      (if (not (file-directory-p my-local-tmp-dir))
-  	(make-directory my-local-tmp-dir)
-        (setenv "TMPDIR" my-local-tmp-dir))))
-  ;; speed up initialization
+  ;;; -*- lexical-binding: t  -*-
+    ;; make sure ntative-comp has the work directory setup
+    (if (and (file-directory-p "/tmp")
+    	 (file-writable-p "/tmp"))
+        (setenv "TMPDIR" "/tmp")
+      (let ((my-local-tmp-dir (concat (getenv "HOME") "/.local/tmp")))
+        (if (not (file-directory-p my-local-tmp-dir))
+    	(make-directory my-local-tmp-dir)
+          (setenv "TMPDIR" my-local-tmp-dir))))
+#+end_src
+** Treak =GC= threshold to speed up init
+#+begin_src emacs-lisp :tangle early-init.el
   (setopt gc-cons-percentage 0.6
-         gc-cons-threshold most-positive-fixnum)
-  ;;
+  	gc-cons-threshold most-positive-fixnum)
+#+end_src
+** Make =C-m=, =C-i= and =C-[= usable in GUI mode
+#+begin_src emacs-lisp :tangle early-init.el
   (defun use-blah-keys-in-gui (frame)
     "Make C-i, C-m and C-[ usable in GUI.
   `FRAME' is the selected GUI frame."
@@ -34,8 +44,7 @@ The file ==early-init.el== is  pretty much setup for basic frame setup and some 
   (add-hook 'after-make-frame-functions #'use-blah-keys-in-gui)
   (use-blah-keys-in-gui (selected-frame))
 #+end_src 
-
-* General utility functions and settings
+* General utilities and settings
 ** Needed built-ins
 #+begin_src emacs-lisp  
 ;;; -*- lexical-binding: t -*- 
@@ -139,7 +148,6 @@ The file ==early-init.el== is  pretty much setup for basic frame setup and some 
   		      ("C-<prior>" . previous-buffer))))
     (loop-alist #'keymap-global-set defkm-alst)))
 #+end_src
-
 ** Async facility
 #+begin_src emacs-lisp
   (use-package async
@@ -148,11 +156,9 @@ The file ==early-init.el== is  pretty much setup for basic frame setup and some 
     (dired-async-mode t)
     (async-bytecomp-package-mode t))
 #+end_src
-
 * UI settings
-
 ** UI ulitiy functions
-
+*** Typeface
 #+begin_src emacs-lisp
   (defun my-font-families (dfl-font &optional pref-fonts-alist)
     "Setup default font face.
@@ -164,7 +170,9 @@ The file ==early-init.el== is  pretty much setup for basic frame setup and some 
         	(set-fontset-font (frame-parameter nil 'font)
         			  (car fspc)
         			  (font-spec :family (cdr fspc))))))
-  ;; 
+#+end_src
+*** Font size 
+#+begin_src emacs-lisp
   (defun my-font-sizes ()
     "Setup default font size according to screen size."
     (interactive)
@@ -190,7 +198,9 @@ The file ==early-init.el== is  pretty much setup for basic frame setup and some 
   	      (eq (display-mm-height) 301))
   	 (set-face-attribute 'default nil :height 100))
   	(t (set-face-attribute 'default nil :height 100))))
-  ;; 
+#+end_src
+*** Default Frame attributes
+#+begin_src emacs-lisp
   (defun my-frame-faces (dlt-font my-pref-fonts-alist theme)
     "Setup the default frame face.
       `DLT-FONT' is the default font, `MY-PREF-FONTS-ALIST' is the default
@@ -206,7 +216,9 @@ The file ==early-init.el== is  pretty much setup for basic frame setup and some 
       	  (blink-cursor-mode -1)
       	  (set-cursor-color "LightSlateGrey")
       	  (load-theme theme t t))))
-  ;; 
+#+end_src
+*** Determine theme to use according to the time of the day
+#+begin_src emacs-lisp
   (defun day-or-night-theme (day-theme night-theme)
     "Setup theme according current time in the day.
       `DAY-THEME' is the theme for day time and `NIGHT-THEME' is for
@@ -216,20 +228,22 @@ The file ==early-init.el== is  pretty much setup for basic frame setup and some 
       	day-theme
         night-theme)))
 #+end_src
-
 ** UI goodies 
 I use many goodies from Minad: consult, marginalia, vertico and orderless:
-
+*** ACE window
 #+begin_src emacs-lisp
-  ;; 
   (use-package ace-window
     :demand t
     :bind
     ("M-o" . ace-window))
-  ;; 
+#+end_src
+*** Shrink-path
+#+begin_src emacs-lisp
   (use-package shrink-path
     :demand t)
-  ;; 
+#+end_src
+*** Consult
+#+begin_src emacs-lisp
   (use-package consult
     :commands (marginalia-mode)
     :bind
@@ -247,28 +261,32 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
   		  "C-r")))
       (cl-loop for k in rk-lst
   	     do (funcall #'keymap-global-unset k))))
-  ;; 
+#+end_src
+*** Marginalia
+#+begin_src emacs-lisp
   (use-package marginalia
     :config
     (marginalia-mode t))
-  ;; 
+#+end_src
+*** Vertico
+#+begin_src emacs-lisp
   (use-package vertico
-    :custom
-    (vertico-resize t)
-    (vertico-cycle t)
-    :config
-    (vertico-mode t))
-  ;; 
+      :custom
+      (vertico-resize t)
+      (vertico-cycle t)
+      :config
+      (vertico-mode t))
+#+end_src
+*** Orderless
+#+begin_src emacs-lisp
   (use-package orderless
     :custom
     (completion-styles '(orderless basic))
     (completion-category-defaults nil)
     (completion-category-overrides '((file (styles partial-completion)))))
 #+end_src
-
-
 ** Theme and UI widget
-
+*** Theme-anchor
 #+begin_src emacs-lisp
     ;; ==== General programming mode face setup utilities ====
   (use-package theme-anchor
@@ -287,7 +305,9 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
      (emacs-lisp-compilation-mode . leuven-face)
      (messages-buffer-mode . leuven-face)
      (ibuffer-mode . leuven-face)))
-  ;; 
+#+end_src
+*** Svg-tag-mode
+#+begin_src emacs-lisp
   (use-package svg-tag-mode
     :init
     (defconst date-re "[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}")
@@ -312,58 +332,66 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
   					:margin 0 :stroke 2 :radius 3 :padding 2 :width 11)
   		  (svg-lib-tag value nil
   			       :stroke 0 :margin 0)) :ascent 'center))))
-  ;; 
+#+end_src
+*** Doom-modeline
+#+begin_src emacs-lisp
   (use-package doom-modeline
     :demand t
     :after (shrink-path)
     :config
     (doom-modeline-mode t)
     (column-number-mode t))
-  ;; 
-  (use-package base16-theme
-    :demand t
-    :after (theme-anchor)
-    :config
-    ;; there's no such built-in face called heading
-    (defface heading '((t (:inherit default))) "heading" :group 'default)
-    (if (display-graphic-p)
-        (my-frame-faces
-         "Fira Code"
-         nil
-         ;; '((han   .  "Noto Sans Mono CJK TC")
-         ;;   (kana  .  "Noto Sans Mono CJK JP"))
-         ;; 'base16-default-light
-         'modus-operandi-tinted))
-    (mds-hook  '(eshell shell term vterm dired)
-  	     (theme-anchor-hook-gen 'base16-nord)))
-  ;; 
-  (use-package eat
-    :commands eshell
-    :hook
-    ((eshell-load . eat-eshell-mode)
-     (eshell-load . eat-eshell-visual-command-mode)))
-  ;; 
-  (use-package eshell-git-prompt
-    :commands (eshell)
-    :init
-    (eshell-git-prompt-use-theme 'powerline))
-  ;; 
-  (use-package helpful
-    :when (display-graphic-p)
-    :after (theme-anchor)
-    :commands (helpful-callable helpful-variable helpful-key)
-    :hook
-    ((helpful-mode . leuven-face))
-    :bind (("C-h f" . helpful-callable)
-  	 ("C-h v" . helpful-variable)
-  	 ("C-h ." . helpful-at-point)))
 #+end_src
-
-* Programming mode settings
-
-** Common settings and tools
+*** Base16-theme
 #+begin_src emacs-lisp
-    ;; 
+  (use-package base16-theme
+      :demand t
+      :after (theme-anchor)
+      :config
+      ;; there's no such built-in face called heading
+      (defface heading '((t (:inherit default))) "heading" :group 'default)
+      (if (display-graphic-p)
+          (my-frame-faces
+           "Fira Code"
+           nil
+           ;; '((han   .  "Noto Sans Mono CJK TC")
+           ;;   (kana  .  "Noto Sans Mono CJK JP"))
+           ;; 'base16-default-light
+           'modus-operandi-tinted))
+      (mds-hook  '(eshell shell term vterm dired)
+    	     (theme-anchor-hook-gen 'base16-nord)))
+#+end_src
+*** Eat
+#+begin_src emacs-lisp
+    (use-package eat
+      :commands eshell
+      :hook
+      ((eshell-load . eat-eshell-mode)
+       (eshell-load . eat-eshell-visual-command-mode)))
+#+end_src
+*** Eshell-git-prompt
+#+begin_src emacs-lisp
+    (use-package eshell-git-prompt
+      :commands (eshell)
+      :init
+      (eshell-git-prompt-use-theme 'powerline))
+#+end_src      
+*** Helpful
+#+begin_src emacs-lisp
+    (use-package helpful
+      :when (display-graphic-p)
+      :after (theme-anchor)
+      :commands (helpful-callable helpful-variable helpful-key)
+      :hook
+      ((helpful-mode . leuven-face))
+      :bind (("C-h f" . helpful-callable)
+    	 ("C-h v" . helpful-variable)
+    	 ("C-h ." . helpful-at-point)))
+#+end_src
+* Programming mode settings
+** Common settings and tools
+*** Flymake =.el= file search path
+#+begin_src emacs-lisp
   (use-package flymake
     :config
     (defun elisp-flymake-load-path-update (func &rest args)
@@ -376,7 +404,9 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
         (apply func args)))
     (advice-add 'elisp-flymake-byte-compile
   	      :around #'elisp-flymake-load-path-update))
-  ;; 
+#+end_src
+*** time-stamp setting for logging update time
+#+begin_src emacs-lisp
   (use-package time-stamp
     :demand t
     :config
@@ -385,27 +415,37 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
   	  time-stamp-end "$")
     :hook
     ((before-save . time-stamp)))
-  ;; 
+#+end_src
+*** Turn on =show-paren-mode= by default
+#+begin_src emacs-lisp
   (use-package paren
     :custom
     (show-paren-style 'expression)
     :hook
     ((prog-mode . show-paren-mode)))
-  ;; 
+#+end_src
+*** Turn on =electric-pair-mode= for =prog-mode= by default
+#+begin_src emacs-lisp
   (use-package elec-pair
     :hook
     ((prog-mode . electric-pair-local-mode)
      (comint-mode . electric-pair-local-mode)))
-  ;; 
+#+end_src  
+*** Use =rainbow-delimiters-mode= to tell the depth of parenthesis
+#+begin_src emacs-lisp 
   (use-package rainbow-delimiters
     :hook
     ((prog-mode . rainbow-delimiters-mode)
      (comint-mode . rainbow-delimiters-mode)))
-  ;; 
+#+end_src
+*** Use =display-line-numbers-mode= for file coordination
+#+begin_src emacs-lisp
   (use-package display-line-numbers
-    :hook
-    ((prog-mode . display-line-numbers-mode)))
-  ;; 
+      :hook
+      ((prog-mode . display-line-numbers-mode)))
+#+end_src
+*** Code block folding with =hs-minor-mode= along with =hydra=
+#+begin_src emacs-lisp
   (use-package hideshow
     :demand t
     :after (hydra)
@@ -438,20 +478,24 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
   	("M-h" . showhide-hydra/body))
     :hook
     ((prog-mode . hs-hide-all-when-open)))
-  ;; 
+#+end_src
+*** Use =lin= to improve current line highlighting
+#+begin_src emacs-lisp
   (use-package lin
-    :custom
-    (lin-mode-hooks '(python-ts-mode-hook
-  		    rust-ts-mode-hook
-  		    ess-r-mode-hook
-  		    emacs-lisp-mode-hook
-  		    slime-mode-hook
-  		    sly-mode-hook
-  		    racket-mode-hook
-  		    geiser-mode-hook))
-    :config
-    (lin-global-mode t))
-  ;; ==== LSP ====
+      :custom
+      (lin-mode-hooks '(python-ts-mode-hook
+    		    rust-ts-mode-hook
+    		    ess-r-mode-hook
+    		    emacs-lisp-mode-hook
+    		    slime-mode-hook
+    		    sly-mode-hook
+    		    racket-mode-hook
+    		    geiser-mode-hook))
+      :config
+      (lin-global-mode t))
+#+end_src
+*** Language Server Protocol facility: =eglot= core configurations
+#+begin_src emacs-lisp
   (use-package eglot
     :defer nil
     :ensure t
@@ -468,39 +512,53 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
   				      :documentFormattingProvider
   				      :documentRangeFormattingProvider
   				      :documentOnTypeFormattingProvider)))
-  ;; 
+#+end_src
+*** Boosting LSP experience by delegating I/O to =emacs-lsp-booster=
+#+begin_src emacs-lisp
   (use-package eglot-booster
     :after eglot
     :custom
     (eglot-booster-io-only t)
     :config
     (eglot-booster-mode))
-  ;; 
+#+end_src  
+*** Clojurian hipster syntax for =emacs lisp= with =dash=
+#+begin_src emacs-lisp
   (use-package dash
     :defer nil
     :ensure t)
   ;; ==== use Treesit insteadd Regexp legacy moed ====
+#+end_src
+*** Automatic turn on corresponding =treesit= mode with =treesit-auto=
+#+begin_src emacs-lisp
   (use-package treesit-auto
-    :defer nil
-    :custom
-    (treesit-auto-install 'prompt)
-    :config
-    (treesit-auto-add-to-auto-mode-alist 'all)
-    (global-treesit-auto-mode t))
-  ;; ==== auto-completion on code file ====
+      :defer nil
+      :custom
+      (treesit-auto-install 'prompt)
+      :config
+      (treesit-auto-add-to-auto-mode-alist 'all)
+      (global-treesit-auto-mode t))
+#+end_src  
+*** Auto-complete UI with =corfu=
+#+begin_src emacs-lisp
   (use-package corfu
     :commands (corfu-mode)
     :hook
     ((prog-mode . corfu-mode))
     :custom
     (corfu-auto t)
-    (corfu-auto-delay 0.0));
-  ;; ---- log file viewer ----
+    (corfu-auto-delay 0.0))
+#+end_src  
+*** Log file viewer
+#+begin_src emacs-lisp
   (use-package logview
     :commands (logviwe-mode)
     :custom
     (datetime-timezone 'America/Chicago))
-  ;; ---- code snippet template ----
+#+end_src
+*** Auto code snippet insert with =yasnippet=
+**** Working house module
+#+begin_src emacs-lisp
   (use-package yasnippet
     :commands (yas-minor-mode)
     :config
@@ -511,19 +569,23 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
   	("C-<tab>" . yas-expand))
     :hook
     ((prog-mode . yas-minor-mode)))
-  ;; ---- snippets ----
+#+end_src
+**** Snippet collection
+#+begin_src emacs-lisp
   (use-package yasnippet-snippets
     :after (yasnippet)
     :commands (yas-minor-mode)
     :config
     (yas-reload-all))
-  ;; ---- new file template ----
+#+end_src
+*** Auto insert template content into to new file
+#+begin_src emacs-lisp
   (use-package autoinsert
     :custom
     (auto-insert-query nil)
     (auto-insert-directory (concat user-emacs-directory "templates"))
     :config
-    ;; 
+    ;;
     (defun autoinsert-yas-expand ()
       (yas-expand-snippet (buffer-string) (point-min) (point-max)))
     ;;
@@ -533,16 +595,16 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
     (auto-insert-mode t)
     :hook
     ((find-file . auto-insert)))
-  ;; ---- Git ----
-  (use-package magit
-    :defer t
-    :commands (magit))
 #+end_src
-
+*** Git version control with =magit=
+#+begin_src emacs-lisp
+  (use-package magit
+      :defer t
+      :commands (magit))
+#+end_src
 ** Lisp modes settings
-
 *** Emacs Lisp
-
+**** Edit mode
 #+begin_src emacs-lisp
     ;; General lispy setup, Emacs lisp
   (use-package lispy 
@@ -562,7 +624,9 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
     (:map lispy-mode-map
   	("M-o" . nil)
   	("M-1" . lispy-string-oneline)))
-  ;; theme for ielm
+#+end_src
+**** Comint (Ielm) mode
+#+begin_src emacs-lisp
   (use-package zenburn-theme
     :after (theme-anchor lispy)
     :commands (ielm)
@@ -572,7 +636,6 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
   ;; ---- Common Lisp ----
   ;; Common Lisp
 #+end_src
-
 *** Common Lisp
 **** Sly
 #+begin_src emacs-lisp
@@ -594,7 +657,6 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
     :hook ((sly-mode . clisp-face)
   	 (sly-repl-mode . inf-clisp-face)))
 #+end_src
-
 *** Scheme
 **** Geiser for various Scheme implementations
 #+begin_src emacs-lisp
@@ -645,7 +707,8 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
       :init
       (use-my-local ".sdkman/candidates/java/current/bin"))
 #+end_src
-** R/Ess
+** R
+*** ESS
 #+begin_src emacs-lisp
     ;;; ==== R ====
   (use-package ess-r-mode
@@ -694,7 +757,9 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
     (:map inferior-ess-r-mode-map
 
   	("C-=" . ess-cycle-assign)))
-  ;; 
+#+end_src
+*** Tree-sitter enabled R mode
+#+begin_src emacs-lisp
   (use-package r-ts-mode
     :defer t
     :commands (r-ts-mode)
@@ -798,7 +863,6 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
     :init
     (use-my-local ".cargo/bin"))
 #+end_src 
-
 ** Functional static programming languages
 *** Haskell
 #+begin_src emacs-lisp
@@ -820,9 +884,7 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
   			       (sbt "sbt" "console")
   			       (nil "scala-cli" "repl" "--amm"))))
 #+end_src
-
 * Writing mode
-
 ** 自定中文輸入法
 #+begin_src emacs-lisp
   (use-package cj5input-dvorak-ergonomic
@@ -836,7 +898,6 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
     (interactive)
     (set-input-method "CJ5_DVORAK_ERGONOMIC")))
 #+end_src
-
 ** Org-mode
 #+begin_src emacs-lisp
     ;;; Code:
@@ -989,11 +1050,9 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
   (if (display-graphic-p)
     (add-hook 'org-mode-hook 'lkg-org-face-set 90))
 #+end_src
-
-
 * Coda of the initilization
-#+begin_src emacs-lisp
-  ;;
+*** Apply default theme with =thema-archor=
+#+begin_src emacs-lisp  
   (defun theme-anchor-misc-buffers nil
     (interactive)
     (dolist (bffr '("*Messages*"
@@ -1004,7 +1063,9 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
       (if (get-buffer bffr)
   	(with-current-buffer bffr (theme-anchor-buffer-local 'leuven)))))
   (theme-anchor-misc-buffers)
-  ;; 
+#+end_src
+*** Treak =GC= threshold for normal operation
+#+begin_src emacs-lisp 
   (run-with-idle-timer 4 nil #'gc-reset-bau)
 #+end_src
 
