@@ -1073,5 +1073,6 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 #+end_src
 
 * Final notes
+This attempt is based on may other people's selfless sharting on various online repository service. 
 
 # README.org ends here
