@@ -3,7 +3,7 @@
 :PROPERTIES:
 #+PROPERTY: header-args :tangle init.el
 #+OPTIONS: toc:2
-#=STARTUP: overview
+#+STARTUP: overview
 :END:
 
 * How to use this file
