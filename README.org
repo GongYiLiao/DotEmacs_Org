@@ -16,8 +16,7 @@ To  generate =early-init.el= and =init.el= from this =README.org= file, run the 
 Do not byte-compile the generated =init.el=, let alone turning =early-init.el= into a =.elc= one. It
 will cause major breakage and the native compiler will keep complaining about undefined symbols.
 * Early initialization
-The file ==early-init.el== is  pretty much setup for basic frame setup and some =GC= adjustment for start-up speed. 
-
+The file ==early-init.el== is  pretty much setup for basic frame setup and some =GC= adjustment for start-up speed.
 ** Setup =TMPDIR= for =native-comp=
 #+begin_src emacs-lisp :tangle early-init.el
   ;;; -*- lexical-binding: t  -*-
@@ -116,9 +115,9 @@ The file ==early-init.el== is  pretty much setup for basic frame setup and some 
 * Core Emacs settings
 #+begin_src emacs-lisp
   (use-package emacs
-  :config
-  (prefer-coding-system 'utf-8)
-  (setopt gc-cons-threshold (* 64 1024 1024)
+    :config
+    (prefer-coding-system 'utf-8)
+    (setopt gc-cons-threshold (* 64 1024 1024)
   	  coding-system-for-write 'utf-8
   	  backup-directory-alist `(("." . ,(concat (getenv "HOME") "/.saves")))
   	  backup-by-copying t
@@ -142,15 +141,15 @@ The file ==early-init.el== is  pretty much setup for basic frame setup and some 
   				       ("MELPA Now"    . 20))
   	  package-gnupghome-dir (concat user-emacs-directory "/elpa/gnupg")
   	  use-package-compute-statistics t) 
-  (package-initialize t)
-  (put 'downcase-region 'disabled nil)
-  (put 'upcase-region 'disabled nil)
-  (use-my-local ".local/bin")
-  (let ((defkm-alst '(("M-h" . nil)
+    (package-initialize t)
+    (put 'downcase-region 'disabled nil)
+    (put 'upcase-region 'disabled nil)
+    (use-my-local ".local/bin")
+    (let ((defkm-alst '(("M-h" . nil)
   		      ("C-x C-p" . mark-paragraph)
   		      ("C-<next>" . next-buffer)
   		      ("C-<prior>" . previous-buffer))))
-    (loop-alist #'keymap-global-set defkm-alst)))
+      (loop-alist #'keymap-global-set defkm-alst)))
 #+end_src
 ** Async facility
 #+begin_src emacs-lisp
