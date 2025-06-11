@@ -111,7 +111,15 @@ Make sure ntative-comp has the work directory setup
     (mapc #'(lambda (md) (md-hook md lt-f))
   	mds))
 #+end_src
-
+*** Open existing file in read-only mode by default
+#+begin_src emacs-lisp
+  (defun ro-existing-file-by-default nil
+    (with-current-buffer (current-buffer)
+      (let ((bfn (buffer-file-name)))
+        (when (and bfn (file-exists-p bfn))
+  	(read-only-mode t)))))
+  (add-hook 'find-file-hook #'ro-existing-file-by-default 100)
+#+end_src
 * Core Emacs settings
 #+begin_src emacs-lisp
   (use-package emacs
