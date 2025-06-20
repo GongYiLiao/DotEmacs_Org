@@ -299,8 +299,9 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 ** Theme and UI widget
 *** Theme-anchor
 #+begin_src emacs-lisp
-    ;; ==== General programming mode face setup utilities ====
   (use-package theme-anchor
+    :commands
+    (theme-anchor-hfkn-gen theme-anchor-buffre-local)
     :custom
     (face-impute-alist '((mode-line-active . mode-line)
   		       (doom-modeline-eldoc . mode-line)
