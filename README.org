@@ -246,16 +246,46 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 *** ACE window
 #+begin_src emacs-lisp
   (use-package ace-window
-    :command (other-window ace-window)
+    :commands (other-window ace-window)
     :config
     (keymap-global-unset "C-x o")
     :bind
     ("M-o" . ace-window))
 #+end_src
+*** Vertico
+#+begin_src emacs-lisp
+  (use-package vertico
+    :demand t
+    :custom
+    (vertico-resize t)
+    (vertico-cycle nil)
+    :config
+    (vertico-mode t))
+#+end_src
+*** Orderless
+#+begin_src emacs-lisp
+  (use-package orderless
+    :demand t
+    :custom
+    (completion-styles '(orderless basic))
+    (completion-category-defaults nil)
+    (completion-category-overrides '((file (styles partial-completion)))))
+#+end_src
+*** Marginalia
+#+begin_src emacs-lisp
+  (use-package marginalia
+    :demand t
+    :custom
+    (marginalia-align 'right)
+    :config
+    (marginalia-mode t))
+#+end_src
 *** Consult
 #+begin_src emacs-lisp
   (use-package consult
-    :commands (marginalia-mode)
+    :demand t
+    :commands (find-file switch-to-buffer ibuffer)
+    ;; :after (:all vertico orderless marginalia)
     :bind
     (("C-x C-b" . consult-buffer)
      ("C-f"     . consult-line)
@@ -272,36 +302,12 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
       (cl-loop for k in rk-lst
   	     do (funcall #'keymap-global-unset k))))
 #+end_src
-*** Marginalia
-#+begin_src emacs-lisp
-  (use-package marginalia
-    :commands (find-file)
-    :config
-    (marginalia-mode t))
-#+end_src
-*** Vertico
-#+begin_src emacs-lisp
-  (use-package vertico
-      :custom
-      (vertico-resize t)
-      (vertico-cycle t)
-      :config
-      (vertico-mode t))
-#+end_src
-*** Orderless
-#+begin_src emacs-lisp
-  (use-package orderless
-    :custom
-    (completion-styles '(orderless basic))
-    (completion-category-defaults nil)
-    (completion-category-overrides '((file (styles partial-completion)))))
-#+end_src
 ** Theme and UI widget
 *** Theme-anchor
 #+begin_src emacs-lisp
   (use-package theme-anchor
     :commands
-    (theme-anchor-hfkn-gen theme-anchor-buffre-local)
+    (theme-anchor-hfkn-gen theme-anchor-buffer-local)
     :custom
     (face-impute-alist '((mode-line-active . mode-line)
   		       (doom-modeline-eldoc . mode-line)
@@ -343,13 +349,6 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
   					:margin 0 :stroke 2 :radius 3 :padding 2 :width 11)
   		  (svg-lib-tag value nil
   			       :stroke 0 :margin 0)) :ascent 'center))))
-#+end_src
-*** Doom-modeline
-#+begin_src emacs-lisp
-  (use-package doom-modeline
-    :config
-    (doom-modeline-mode t)
-    (column-number-mode t))
 #+end_src
 *** Base16-theme
 #+begin_src emacs-lisp
@@ -395,6 +394,15 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
       :bind (("C-h f" . helpful-callable)
     	 ("C-h v" . helpful-variable)
     	 ("C-h ." . helpful-at-point)))
+#+end_src
+*** Doom-modeline
+#+begin_src emacs-lisp
+  (use-package doom-modeline
+    :if (display-graphic-p)
+    :demand t
+    :config
+    (doom-modeline-mode t)
+    (column-number-mode t))
 #+end_src
 * Programming mode settings
 ** Common settings and tools
