@@ -121,6 +121,7 @@ Make sure ntative-comp has the work directory setup
   (add-hook 'find-file-hook #'ro-existing-file-by-default 100)
 #+end_src
 * Core Emacs settings
+** Main core setting via =use-package=
 #+begin_src emacs-lisp
   (use-package emacs
     :config
@@ -148,6 +149,7 @@ Make sure ntative-comp has the work directory setup
   				       ("MELPA Stable" . 45)
   				       ("MELPA Now"    . 20))
   	  package-gnupghome-dir (concat user-emacs-directory "/elpa/gnupg")
+  	  use-package-always-defer t
   	  use-package-compute-statistics t) 
     (package-initialize t)
     (put 'downcase-region 'disabled nil)
@@ -244,14 +246,11 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 *** ACE window
 #+begin_src emacs-lisp
   (use-package ace-window
-    :demand t
+    :command (other-window ace-window)
+    :config
+    (keymap-global-unset "C-x o")
     :bind
     ("M-o" . ace-window))
-#+end_src
-*** Shrink-path
-#+begin_src emacs-lisp
-  (use-package shrink-path
-    :demand t)
 #+end_src
 *** Consult
 #+begin_src emacs-lisp
@@ -276,6 +275,7 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 *** Marginalia
 #+begin_src emacs-lisp
   (use-package marginalia
+    :commands (find-file)
     :config
     (marginalia-mode t))
 #+end_src
@@ -301,7 +301,6 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 #+begin_src emacs-lisp
     ;; ==== General programming mode face setup utilities ====
   (use-package theme-anchor
-    :commands (theme-anchor-buffer-local theme-anchor-hook-gen)
     :custom
     (face-impute-alist '((mode-line-active . mode-line)
   		       (doom-modeline-eldoc . mode-line)
@@ -347,8 +346,6 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 *** Doom-modeline
 #+begin_src emacs-lisp
   (use-package doom-modeline
-    :demand t
-    :after (shrink-path)
     :config
     (doom-modeline-mode t)
     (column-number-mode t))
@@ -356,7 +353,6 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 *** Base16-theme
 #+begin_src emacs-lisp
   (use-package base16-theme
-      :demand t
       :after (theme-anchor)
       :config
       ;; there's no such built-in face called heading
@@ -419,7 +415,6 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 *** time-stamp setting for logging update time
 #+begin_src emacs-lisp
   (use-package time-stamp
-    :demand t
     :config
     (setopt time-stamp-start "Updated:[ 	]+\\\\?+"
   	  time-stamp-format "%Y-%m-%d %3a %H:%M:%S%:z by %L"
@@ -458,7 +453,6 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 *** Code block folding with =hs-minor-mode= along with =hydra=
 #+begin_src emacs-lisp
   (use-package hideshow
-    :demand t
     :after (hydra)
     :custom
     (hs-hide-comments-when-hiding-all nil)
@@ -508,8 +502,6 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 *** Language Server Protocol facility: =eglot= core configurations
 #+begin_src emacs-lisp
   (use-package eglot
-    :defer nil
-    :ensure t
     :custom
     (fset #'jsonrpc--log-event #'ignore)
     (eglot-events-buffer-size 0)
@@ -536,14 +528,12 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 *** Clojurian hipster syntax for =emacs lisp= with =dash=
 #+begin_src emacs-lisp
   (use-package dash
-    :defer nil
     :ensure t)
   ;; ==== use Treesit insteadd Regexp legacy moed ====
 #+end_src
 *** Automatic turn on corresponding =treesit= mode with =treesit-auto=
 #+begin_src emacs-lisp
   (use-package treesit-auto
-      :defer nil
       :custom
       (treesit-auto-install 'prompt)
       :config
@@ -610,7 +600,6 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 *** Git version control with =magit=
 #+begin_src emacs-lisp
   (use-package magit
-      :defer t
       :commands (magit))
 #+end_src
 ** Lisp modes settings
@@ -652,7 +641,6 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 #+begin_src emacs-lisp
   ;; Sly
   (use-package sly
-    :defer t
     :after (theme-anchor lispy)
     :commands (sly)
     :config
@@ -723,7 +711,6 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 #+begin_src emacs-lisp
     ;;; ==== R ====
   (use-package ess-r-mode
-    :defer t
     :commands (R ess-R-mode ess-r-mode R-mode)
     :after (theme-anchor)
     :init
@@ -772,7 +759,6 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 *** Tree-sitter enabled R mode
 #+begin_src emacs-lisp
   (use-package r-ts-mode
-    :defer t
     :commands (r-ts-mode)
     :after (eglot ess-r-mode)
     :load-path "~/Downloads/github/nverno/r-ts-mode"
@@ -839,7 +825,6 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 ** C/Fortran/Rust low level languages
 *** C/C++
 #+begin_src emacs-lisp
-    ;; C/C++
   (use-package cc-mode
     :commands (cc-mode c-mode c++-mode c++-ts-mode c-ts-mode)
     :config
@@ -850,9 +835,7 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 #+end_src
 *** Fortran
 #+begin_src emacs-lisp
-  ;; Fortran
   (use-package f90
-    :defer t
     :commands (f90-mode fortran-mode)
     :config
     (defun fortran-90-face nil (theme-anchor-hkfn-gen 'modus-operandi-deuteranopia))
@@ -860,9 +843,7 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 #+end_src
 *** Rust
 #+begin_src emacs-lisp
-  ;; Rust
   (use-package rust-mode
-    :defer t
     :commands (rust-mode rust-ts-mode)
     :config
     (defun rust-face nil (theme-anchor-hkfn-gen 'modus-operandi-tinted))
@@ -877,7 +858,6 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 ** Functional static programming languages
 *** Haskell
 #+begin_src emacs-lisp
-  ;; 
   (use-package haskell-mode
     :defer t
     :commands (run-haskell haskell-mode)
@@ -886,9 +866,7 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 #+end_src
 *** Scala
 #+begin_src emacs-lisp
-    ;; 
   (use-package scala-repl
-    :defer t
     :commands (scala-repl-run)
     :custom
     (scala-repl-command-alist  '((mill "mill" "_.console")
@@ -899,19 +877,18 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 ** 自定中文輸入法
 #+begin_src emacs-lisp
   (use-package cj5input-dvorak-ergonomic
-  :defer t
-  :commands load-cj5
-  :load-path (lambda () (concat
-  			 user-emacs-directory
+    :commands (load-cj5)
+    :load-path
+    (lambda () (concat
+  	      user-emacs-directory
   			 "/elpa/homebrew/cj5input-dvorak-ergonomic"))
-  :config
-  (defun load-cj5 ()
-    (interactive)
-    (set-input-method "CJ5_DVORAK_ERGONOMIC")))
+    :config
+    (defun load-cj5 ()
+      (interactive)
+      (set-input-method "CJ5_DVORAK_ERGONOMIC")))
 #+end_src
 ** Org-mode
 #+begin_src emacs-lisp
-    ;;; Code:
   (use-package org
     :config
     (font-lock-add-keywords 'org-mode
