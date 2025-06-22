@@ -820,7 +820,6 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 *** Haskell
 #+begin_src emacs-lisp
   (use-package haskell-ts-mode
-    :demand t
     :commands (run-haskell haskell-ts-mode)
     :custom
     (haskell-ts-prettify-symbols t)
