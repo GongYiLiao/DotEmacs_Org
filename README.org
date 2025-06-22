@@ -819,9 +819,16 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 ** Functional static programming languages
 *** Haskell
 #+begin_src emacs-lisp
-  (use-package haskell-mode
-    :defer t
-    :commands (run-haskell haskell-mode)
+  (use-package haskell-ts-mode
+    :commands (run-haskell haskell-ts-mode)
+    :config
+    (defun haskell-face nil (theme-anchor-hkfn-gen 'base16-harmonic16-light))
+    (defun haskell-repl-buffer-face (buffer)
+       (with-current-buffer buffer
+         (theme-anchor-buffer-local 'base16-harmonic16-dark)))
+    (advice-add 'run-haskell :filter-return #'haskell-repl-buffer-face)
+    :hook
+    ((haskell-ts-mode . haskell-face))
     :init
     (use-my-local ".ghcup/bin"))
 #+end_src
