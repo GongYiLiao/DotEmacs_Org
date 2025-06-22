@@ -820,15 +820,25 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 *** Haskell
 #+begin_src emacs-lisp
   (use-package haskell-ts-mode
+    :demand t
     :commands (run-haskell haskell-ts-mode)
-    :config
+    :custom
+    (haskell-ts-prettify-symbols t)
+    (haskell-ts-prettify-words t)
+    (haskell-ts-use-indent nil)
+    :mode "\\.hs\\'"   
+    :config    
     (defun haskell-face nil (theme-anchor-hkfn-gen 'base16-harmonic16-light))
     (defun haskell-repl-buffer-face (buffer)
        (with-current-buffer buffer
          (theme-anchor-buffer-local 'base16-harmonic16-dark)))
     (advice-add 'run-haskell :filter-return #'haskell-repl-buffer-face)
+    (with-eval-after-load 'eglot   
+      (add-to-list 'eglot-server-programs
+                   '(haskell-ts-mode . ("haskell-language-server-9.6.7~2.10.0.0" "--lsp"))))
     :hook
-    ((haskell-ts-mode . haskell-face))
+    ((haskell-ts-mode . haskell-face)
+     (haskell-ts-mode . prettify-symbols-mode))
     :init
     (use-my-local ".ghcup/bin"))
 #+end_src
