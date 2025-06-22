@@ -55,12 +55,25 @@ Make sure ntative-comp has the work directory setup
   (require 'use-package)
   (require 'cl-lib)
 #+end_src
-** Setup up eln-load-path
+** Native compilation
+*** Setup up eln-load-path
 #+begin_src emacs-lisp
   (if (boundp 'native-comp-eln-load-path)      
       (add-to-list 'native-comp-eln-load-path
     		 (concat user-emacs-directory "/eln-cache/")))          
 #+end_src
+*** Prevent unnecessary recompiling
+#+begin_src emacs-lisp
+  (defun fixed-native--compile-async-skip-p
+          (native--compile-async-skip-p file load selector)
+      (let* ((naive-elc-file (file-name-with-extension file "elc"))
+             (elc-file       (replace-regexp-in-string
+                                 "\\.el\\.elc$" ".elc" naive-elc-file)))
+          (or (gethash elc-file comp--no-native-compile)
+              (funcall native--compile-async-skip-p file load selector))))
+  (advice-add 'native--compile-async-skip-p
+  	    :around 'fixed-native--compile-async-skip-p)  
+#+end_src 
 ** General utility functions
 *** GC trick
 #+begin_src emacs-lisp
@@ -169,7 +182,7 @@ Make sure ntative-comp has the work directory setup
     (dired-async-mode t)
     (async-bytecomp-package-mode t))
 #+end_src
-k* UI settings
+* UI settings
 ** UI ulitiy functions
 *** Typeface
 #+begin_src emacs-lisp
@@ -258,7 +271,7 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
     :demand t
     :custom
     (vertico-resize t)
-    (vertico-cycle nil)
+    (vertico-cycle t)
     :config
     (vertico-mode t))
 #+end_src
@@ -586,7 +599,6 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 *** Emacs Lisp
 **** Edit mode
 #+begin_src emacs-lisp
-    ;; General lispy setup, Emacs lisp
   (use-package lispy 
     :after (theme-anchor)
     :commands (lispy-mode)
@@ -613,24 +625,19 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
     :config
     (defun ielm-face nil (lispy-face 'zenburn ))
     :hook ((ielm-mode . ielm-face)))
-  ;; ---- Common Lisp ----
-  ;; Common Lisp
 #+end_src
 *** Common Lisp
 **** Sly
 #+begin_src emacs-lisp
-  ;; Sly
   (use-package sly
-    :after (theme-anchor lispy)
     :commands (sly)
+    :after (theme-anchor lispy)
+    :custom
+    (inferior-lisp-program "ros -Q -- run")
     :config
-    (remove-hook 'lisp-mode-hook 'slime-lisp-mode-hook)
-    (use-my-local)
-    (use-my-local ".roswell/bin")
-    (setq inferior-lisp-program "ros -Q -- run")
-    (setq lispy-colon-no-space-regex
-          (append lispy-colon-no-space-regex
-                  '((sly-mrepl-mode . "\\s-\\|[:^?#]\\|ql\\|alexandria\\|\\(?:\\s([[:word:]-]*\\)"))))
+    (use-my-local ".roswell/bin")    
+    (add-to-list 'lispy-colon-no-space-regex
+                 '(sly-mrepl-mode . "\\s-\\|[:^?#]\\|ql\\|alexandria\\|\\(?:\\s([[:word:]-]*\\)"))
     (defun clisp-face nil (lispy-face 'base16-summerfruit-light)) 
     (defun inf-clisp-face nil (lispy-face 'base16-summerfruit-light))
     :hook ((sly-mode . clisp-face)
@@ -639,33 +646,31 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 *** Scheme
 **** Geiser for various Scheme implementations
 #+begin_src emacs-lisp
-  ;;; ---- Scheme Family ----
-  ;; Scheme
-  (use-package geiser
-    :after (lispy)
-    :commands (geiser)
-    :config
-    ;; ---- Scheme face ----
-    (defun scheme-face nil (lispy-face 'base16-horizon-dark)) 
-    (defun scheme-repl-face nil (lispy-face 'base16-horizon-terminal-dark))
-    (defun scheme-debug-face nil (inf-lispy-repl-face 'base16-cupertino)) 
-    :custom
-    '((geiser-repl-use-other-window nil)
-      (setq geiser-guile-binary "guile"))
-    :hook ((geiser-mode . scheme-face)
-           (geiser-repl-mode . scheme-repl-face)
-           (inferior-scheme-mode . scheme-repl-face)
-           (geiser-debug-mode . scheme-debug-face)))
+   (use-package geiser
+     :after (lispy)
+     :commands (run-geiser)
+     :config
+     ;; ---- Scheme face ----
+     (defun scheme-face nil (lispy-face 'base16-google-light)) 
+     (defun scheme-repl-face nil (lispy-face 'base16-google-dark))
+     (defun scheme-debug-face nil (inf-lispy-repl-face 'base16-cupertino)) 
+     :custom
+     (geiser-repl-use-other-window nil)
+     (setq geiser-guile-binary "guile")
+     :hook
+     ((geiser-mode . scheme-face)
+      (geiser-repl-mode . scheme-repl-face)
+      (inferior-scheme-mode . scheme-repl-face)
+      (geiser-debug-mode . scheme-debug-face)))
 #+end_src
-**** Racket 
+*** Racket 
 #+begin_src emacs-lisp
-    ;;; ---- Racket ----
     (use-package racket-mode
       :commands (racket-repl racket-mode)
       :after (lispy)
       :config
-      (defun racket-face nil (lispy-face 'base16-atelier-sulphurpool))
-      (defun racket-repl-face nil (lispy-face 'base16-atelier-savanna))
+      (defun racket-face nil (lispy-face 'base16-atelier-sulphurpool-light))
+      (defun racket-repl-face nil (lispy-face 'base16-atelier-sulphurpool))
       (defun racket-debug-face nil (lispy-face 'base16-apathyo))
       :hook ((racket-mode . racket-face)
              (racket-mode . racket-xp-mode)
@@ -673,18 +678,16 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 #+end_src
 *** Clojure
 #+begin_src emacs-lisp
-  ;;; ---- Clojure ----
-    (use-package cider
-      :after (lispy)
-      :commands (clojure-mode cider-jack-in)
-      :config
-      ;; ---- Clojure face ----
-      (defun clojure-face nil (lispy-face 'base16-tomorrow-night))
-      (defun clojure-repl-face nil (lispy-face 'base16-tomorrow-night))
-      :hook ((clojure-mode . clojure-face)
-             (cider-repl-mode . clojure-repl-face))
-      :init
-      (use-my-local ".sdkman/candidates/java/current/bin"))
+  (use-package cider
+    :after (lispy)
+    :commands (clojure-mode cider-jack-in)
+    :config
+    (defun clojure-face nil (lispy-face 'base16-tomorrow))
+    (defun clojure-repl-face nil (lispy-face 'base16-tomorrow-night))
+    :hook ((clojure-mode . clojure-face)
+           (cider-repl-mode . clojure-repl-face))
+    :init
+    (use-my-local ".sdkman/candidates/java/current/bin"))
 #+end_src
 ** R
 *** ESS
@@ -719,8 +722,8 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
     (ess-r-backend 'lsp) 
     :config
     (defun r-face nil (theme-anchor-hkfn-gen 'base16-atelier-seaside-light))
-    (defun r-tsst-face nil (theme-anchor-hkfn-gen 'base16-atelier-seaside-light))
-    (defun r-repl-face nil (theme-anchor-hkfn-gen 'base16-atelier-seaside-light))
+    (defun r-tsst-face nil (theme-anchor-hkfn-gen 'base16-atelier-savanna-light))
+    (defun r-repl-face nil (theme-anchor-hkfn-gen 'base16-atelier-seaside))
     (defun r-help-face nil (theme-anchor-hkfn-gen 'base16-ashes))
     :hook
     ((ess-r-mode . r-face)
