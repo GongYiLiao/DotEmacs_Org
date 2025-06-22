@@ -169,7 +169,7 @@ Make sure ntative-comp has the work directory setup
     (dired-async-mode t)
     (async-bytecomp-package-mode t))
 #+end_src
-* UI settings
+k* UI settings
 ** UI ulitiy functions
 *** Typeface
 #+begin_src emacs-lisp
@@ -484,6 +484,7 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 *** Language Server Protocol facility: =eglot= core configurations
 #+begin_src emacs-lisp
   (use-package eglot
+    :commands (eglot eglot-ensure)
     :custom
     (fset #'jsonrpc--log-event #'ignore)
     (eglot-events-buffer-size 0)
@@ -496,7 +497,13 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
     (eglot-ignore-server-capabilities '(:inlayhintProvider
   				      :documentFormattingProvider
   				      :documentRangeFormattingProvider
-  				      :documentOnTypeFormattingProvider)))
+  				      :documentOnTypeFormattingProvider))
+     :bind
+     (:map eglot-mode-map
+       ("C-c C-d" . eldoc)
+       ("C-c C-e" . eglot-rename)
+       ("C-c C-o" . python-sort-imports)
+       ("C-c C-f" . eglot-format-buffer)))
 #+end_src
 *** Boosting LSP experience by delegating I/O to =emacs-lsp-booster=
 #+begin_src emacs-lisp
@@ -513,15 +520,6 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
     :ensure t)
   ;; ==== use Treesit insteadd Regexp legacy moed ====
 #+end_src
-*** Automatic turn on corresponding =treesit= mode with =treesit-auto=
-#+begin_src emacs-lisp
-  (use-package treesit-auto
-      :custom
-      (treesit-auto-install 'prompt)
-      :config
-      (treesit-auto-add-to-auto-mode-alist 'all)
-      (global-treesit-auto-mode t))
-#+end_src  
 *** Auto-complete UI with =corfu=
 #+begin_src emacs-lisp
   (use-package corfu
@@ -691,10 +689,9 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 ** R
 *** ESS
 #+begin_src emacs-lisp
-    ;;; ==== R ====
   (use-package ess-r-mode
+    :if (display-graphic-p)
     :commands (R ess-R-mode ess-r-mode R-mode)
-    :after (theme-anchor)
     :init
     (setenv "R_LINTR_LINTER_FILE" (concat user-emacs-directory  "lsp_configs/lintr"))
     (with-eval-after-load 'eglot
@@ -727,7 +724,6 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
     (defun r-help-face nil (theme-anchor-hkfn-gen 'base16-ashes))
     :hook
     ((ess-r-mode . r-face)
-     (ess-r-mode . eglot-ensure)
      (ess-r-transcript-mode . r-tsst-face)
      (inferior-ess-r-mode .  r-repl-face)
      (ess-r-help-mode . r-help-face))
@@ -738,37 +734,11 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 
   	("C-=" . ess-cycle-assign)))
 #+end_src
-*** Tree-sitter enabled R mode
-#+begin_src emacs-lisp
-  (use-package r-ts-mode
-    :commands (r-ts-mode)
-    :after (eglot ess-r-mode)
-    :load-path "~/Downloads/github/nverno/r-ts-mode"
-    :init
-    (with-eval-after-load 'eglot
-      (add-to-list 'eglot-server-programs
-  		 '(r-ts-mode . ("R" "--slave" "-e" "options(languageserver.rich_documentation = FALSE); languageserver::run()"))))
-    (defvar-keymap r-ts-mode-map
-      :parent ess-r-mode-map)
-    :bind
-    (:map r-ts-mode-map
-  	("C-=" . ess-cycle-assign))
-    :hook
-    ((r-ts-mode . r-face)
-     (r-ts-mode . eglot-ensure)))
-#+end_src
 ** Python
 #+begin_src emacs-lisp
-    ;;; === Python ====
   (use-package python
-    :after (treesit eglot)
-    :commands (run-python python-ts-mode)
-    :bind
-    (:map eglot-mode-map
-          ("C-c C-d" . eldoc)
-          ("C-c C-e" . eglot-rename)
-          ("C-c C-o" . python-sort-imports)
-          ("C-c C-f" . eglot-format-buffer))
+    :if (display-graphic-p)
+    :commands (run-python python-ts-mode python-mode)
     :custom
     (python-shell-interpreter "jupyter")
     (python-shell-interpreter-args "console --simple-prompt")
@@ -777,27 +747,26 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
     (add-to-list 'python-shell-completion-native-disabled-interpreters
   	       "jupyter")
     (defun python-face nil
-      (theme-anchor-hkfn-gen 'base16-atelier-lakeside))
-    (defun python-repl-face nil
       (theme-anchor-hkfn-gen 'base16-atelier-lakeside-light))
-    (setq-default eglot-workspace-configuration
-                  '((:pylsp . (:configurationSources ["flake8"]
-  			     :plugins (:pycodestyle
-  				       (:enabled :json-false)
+    (defun python-repl-face nil
+      (theme-anchor-hkfn-gen 'base16-atelier-lakeside))
+    (with-eval-after-load 'eglot
+      (add-to-list 'eglot-workspace-configuration
+                   '(:pylsp . (:configurationSources ["flake8"]
+         		       :plugins (:pycodestyle (:enabled :json-false)
   				       :mccabe (:enabled :json-false)
   				       :pyflakes (:enabled :json-false)
-  				       :flake8 (:enabled :json-false
-  							 :maxLineLength 88)
-  				       :ruff (:enabled t
-  						       :lineLength 88)
-  				       :pydocstyle (:enabled t
-  							     :convention "numpy")
+  				       :flake8 (:enabled :json-false :maxLineLength 88)
+  				       :ruff (:enabled t :lineLength 88)
+  				       :pydocstyle (:enabled t :convention "numpy")
   				       :yapf (:enabled :json-false)
   				       :autopep8 (:enabled :json-false)
-  				       :black (:enabled t
-  							:line_length 88
-  							:cache_config t))))))
-    :hook ((python-ts-mode . python-face)
+  				       :black (:enabled t :line_length 88 :cache_config t))))))
+    :init
+     (add-to-list 'major-mode-remap-alist
+                  '(python-mode . python-ts-mode))
+    :hook
+    ((python-ts-mode . python-face)
   	 (python-ts-mode . eglot-ensure)
   	 (python-ts-mode . flyspell-prog-mode)
   	 (python-ts-mode . superword-mode)
@@ -812,8 +781,13 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
     :config
     (defun c-basic-face nil (theme-anchor-hkfn-gen 'base16-gruvbox-light-medium))
     (defun c++-basic-face nil (theme-anchor-hkfn-gen 'base16-gruvbox-light-hard))
-    :hook ((c-ts-mode . c-basic-face )
-  	 (c++-ts-mode . c++-basic-face)))
+    :init
+    (add-to-list 'major-mode-remap-alist '(c-mode . c-ts-mode))
+    (add-to-list 'major-mode-remap-alist '(c++-mode . c++-ts-mode))
+    :hook ((c-ts-mode . c-basic-face)
+           (c-ts-mode . eglot-ensure)
+  	 (c++-ts-mode . c++-basic-face)
+           (c++-ts-mode . eglot-ensure)))
 #+end_src
 *** Fortran
 #+begin_src emacs-lisp
@@ -825,17 +799,19 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 #+end_src
 *** Rust
 #+begin_src emacs-lisp
-  (use-package rust-mode
-    :commands (rust-mode rust-ts-mode)
-    :config
-    (defun rust-face nil (theme-anchor-hkfn-gen 'modus-operandi-tinted))
-    :custom
-    (rust-mode-treesitter-derive t)
-    :hook
-    ((rust-mode . rust-face)
-     (rust-ts-mode . rust-face))
-    :init
-    (use-my-local ".cargo/bin"))
+    (use-package rust-mode
+      :commands (rust-mode rust-ts-mode)
+      :config
+      (defun rust-face nil (theme-anchor-hkfn-gen 'modus-operandi-tinted))
+      :custom
+      (rust-mode-treesitter-derive t)
+      :init
+      (add-to-list 'major-mode-remap-alist '(rust-mode . rust-ts-mode))
+      :hook
+      ((rust-ts-mode . rust-face)
+       (rust-ts-mode . eglot-ensure))
+      :init
+      (use-my-local ".cargo/bin"))
 #+end_src 
 ** Functional static programming languages
 *** Haskell
@@ -919,7 +895,7 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 
 #+end_src
 
-* Coda of the initilization
+* Coda of the initialization
 *** Apply default theme with =thema-archor=
 #+begin_src emacs-lisp  
   (defun theme-anchor-misc-buffers nil
