@@ -72,7 +72,7 @@ Make sure ntative-comp has the work directory setup
 #+end_src
 *** loop over associate list
 #+begin_src emacs-lisp
-    (defun loop-alist (f k-v-alist)
+  (defun loop-alist (f k-v-alist)
       "Map over an associate list.
   F is a function to take key as first argument and value as
   the second argument.K-V-ALIST: an assocaited list."
