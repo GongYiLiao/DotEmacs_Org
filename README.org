@@ -842,13 +842,42 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
     (use-my-local ".ghcup/bin"))
 #+end_src
 *** Scala
+**** Edit mode
+#+begin_src emacs-lisp
+  (use-package ef-themes
+    :commands (scala-ts-mode))  
+  (use-package scala-ts-mode
+   :commands (scala-ts-mode)
+   :mode "\\.scala\\'"
+   :interpreter ("scala" . scala-ts-mode)
+   :config
+   (defun scala-face nil (theme-anchor-hkfn-gen 'ef-arbutus))
+   (with-eval-after-load 'eglot
+     (add-to-list 'eglot-server-programs
+                  '(scala-ts-mode .  ("metals"))))
+   :hook
+   ((scala-ts-mode . scala-face))
+   :init   
+   (use-my-local ".sdkman/candidates/java/current/bin") 
+   (use-my-local ".sdkman/candidates/scala/current/bin")
+   (use-my-local ".local/share/coursier/bin"))
+#+end_src
+**** REPL
 #+begin_src emacs-lisp
   (use-package scala-repl
     :commands (scala-repl-run)
     :custom
     (scala-repl-command-alist  '((mill "mill" "_.console")
-  			       (sbt "sbt" "console")
-  			       (nil "scala-cli" "repl" "--amm"))))
+  			       (sbt  "sbt" "console")
+  			       (nil  "scala-cli" "repl" "--amm")))
+    :config
+    (defun scala-repl-face (buffer)
+       (with-current-buffer buffer
+  	   (theme-anchor-buffer-local 'ef-autumn)))
+    (advice-add 'scala-repl--ensure-session-buffer :filter-return #'scala-repl-face)
+    :init
+    (use-my-local ".sdkman/candidates/scalacli/current/bin") 
+    (use-my-local ".sdkman/candidates/sbt/current/bin"))
 #+end_src
 * Writing mode
 ** 自定中文輸入法
