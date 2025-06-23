@@ -843,7 +843,7 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 #+end_src
 *** Scala
 **** Edit mode
-This setting requires both [[https://sdkman.io/][SDKMan]] and [[https://get-coursier.io/][Coursier]] installed under some sub-directories of the user's ~~/.local~.
+This setting requires both [[https://sdkman.io/][SDKMan]] and [[https://get-coursier.io/][Coursier]] installed under some sub-directories of the user's =~/.local=.
 Assuming the target ~JVM~ and ~Scala~ run-times are installed via this environment management tools accordingly.
 #+begin_src emacs-lisp
   (use-package ef-themes
