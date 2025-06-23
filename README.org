@@ -843,6 +843,8 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 #+end_src
 *** Scala
 **** Edit mode
+This setting requires both [[https://sdkman.io/][SDKMan]] and [[https://get-coursier.io/][Coursier]] installed under same sub-directory of the user's ~~/.local~.
+Assuming the target ~JVM~ and ~Scala~ run-times are installed via this environment management tools accordingly.
 #+begin_src emacs-lisp
   (use-package ef-themes
     :commands (scala-ts-mode))  
@@ -863,6 +865,7 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
    (use-my-local ".local/share/coursier/bin"))
 #+end_src
 **** REPL
+This setting requires [[https://www.scala-sbt.org/][sbt]] and [[https://scala-cli.virtuslab.org/][Scala-CLI]]. 
 #+begin_src emacs-lisp
   (use-package scala-repl
     :commands (scala-repl-run)
