@@ -596,8 +596,8 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
       :commands (magit))
 #+end_src
 ** Lisp modes settings
-*** Emacs Lisp
-**** Edit mode
+*** General editing facility based on [[https://github.com/abo-abo/lispy][Lispy]]
+=Lispy= only works with =emacs-lisp-mode= as add-on, it cannot be on demand as =emacs-lisp-mode= is always loaded
 #+begin_src emacs-lisp
   (use-package lispy 
     :after (theme-anchor)
@@ -617,6 +617,7 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
   	("M-o" . nil)
   	("M-1" . lispy-string-oneline)))
 #+end_src
+*** Emacs Lisp
 **** Comint (Ielm) mode
 #+begin_src emacs-lisp
   (use-package zenburn-theme
@@ -646,22 +647,25 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
 *** Scheme
 **** Geiser for various Scheme implementations
 #+begin_src emacs-lisp
-   (use-package geiser
-     :after (lispy)
-     :commands (run-geiser)
-     :config
-     ;; ---- Scheme face ----
-     (defun scheme-face nil (lispy-face 'base16-google-light)) 
-     (defun scheme-repl-face nil (lispy-face 'base16-google-dark))
-     (defun scheme-debug-face nil (inf-lispy-repl-face 'base16-cupertino)) 
-     :custom
-     (geiser-repl-use-other-window nil)
-     (setq geiser-guile-binary "guile")
-     :hook
-     ((geiser-mode . scheme-face)
-      (geiser-repl-mode . scheme-repl-face)
-      (inferior-scheme-mode . scheme-repl-face)
-      (geiser-debug-mode . scheme-debug-face)))
+  (use-package geiser
+    :after (lispy)
+    :commands (geiser)
+    :config
+    ;; ---- Scheme face ----
+    (defun geiser-face nil (lispy-face 'base16-google-light)) 
+    (defun geiser-repl-face nil (lispy-face 'base16-google-dark))
+    (defun geiser-debug-face nil (inf-lispy-repl-face 'base16-cupertino)) 
+    :custom
+    (geiser-repl-use-other-window nil)
+    (setq geiser-guile-binary "guile")
+    :hook
+    ((geiser-mode . scheme-face)
+     (geiser-repl-mode . scheme-repl-face)
+     (inferior-scheme-mode . scheme-repl-face)
+     (geiser-debug-mode . geiser-debug-face)))
+  (use-package geiser-guile
+    :commands (geiser-guile)
+    :after (geiser))
 #+end_src
 *** Racket 
 #+begin_src emacs-lisp
@@ -743,6 +747,7 @@ I use many goodies from Minad: consult, marginalia, vertico and orderless:
     :if (display-graphic-p)
     :commands (run-python python-ts-mode python-mode)
     :custom
+    (python-interpreter "python3")
     (python-shell-interpreter "jupyter")
     (python-shell-interpreter-args "console --simple-prompt")
     (python-shell-prompt-detect-failure-warning nil)
